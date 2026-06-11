@@ -3,15 +3,30 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 
 // Support process.env.TURSO_DATABASE_URL or fallback to local sqlite file
-const dbUrl = process.env.TURSO_DATABASE_URL || `file:${path.resolve(__dirname, 'db.sqlite3')}`;
-const dbToken = process.env.TURSO_AUTH_TOKEN;
+let dbUrl = process.env.TURSO_DATABASE_URL;
+let dbToken = process.env.TURSO_AUTH_TOKEN;
+let isUsingTurso = false;
+
+if (dbUrl && typeof dbUrl === 'string') {
+  const trimmedUrl = dbUrl.trim();
+  if (trimmedUrl.startsWith('libsql://') || trimmedUrl.startsWith('https://') || trimmedUrl.startsWith('http://')) {
+    dbUrl = trimmedUrl;
+    isUsingTurso = true;
+  }
+}
+
+if (!isUsingTurso) {
+  dbUrl = `file:${path.resolve(__dirname, 'db.sqlite3')}`;
+  dbToken = undefined;
+  console.log('No valid TURSO_DATABASE_URL environment variable provided. Falling back to local SQLite file database.');
+} else {
+  console.log('Connecting to cloud Turso Database...');
+}
 
 const client = createClient({
   url: dbUrl,
   authToken: dbToken
 });
-
-console.log('Connected to the Database (Turso/libSQL).');
 
 // Helper functions wrapping libsql client for clean async/await code
 const dbRun = async (sql, params = []) => {
