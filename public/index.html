@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบติดตามและบริหารโครงการ TOAT Sandbox</title>
+  <!-- Google Fonts: Outfit for English/numbers and Sarabun for Thai text -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" type="image/png" href="/images/logo.png">
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- AUTHENTICATION PAGES (Overlay Container)   -->
+  <!-- ========================================== -->
+  <div id="auth-container" class="auth-overlay hidden">
+    <div class="auth-card glassmorphism">
+      <div class="auth-logo">
+        <img src="/images/logo.png" alt="TOAT Sandbox Logo" class="auth-logo-img">
+        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">ระบบติดตามและบริหารโครงการ</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
+        <h2>เข้าสู่ระบบ</h2>
+        <div class="form-group">
+          <label for="login-username"><i class="fa-solid fa-user"></i> ชื่อผู้ใช้ / อีเมล</label>
+          <input type="text" id="login-username" required placeholder="เช่น admin, staff">
+        </div>
+        <div class="form-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> รหัสผ่าน</label>
+          <input type="password" id="login-password" required placeholder="ป้อนรหัสผ่านของคุณ">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+        <div class="auth-links">
+          <a href="#" id="go-register">ลงทะเบียนบัญชีใหม่</a>
+          <a href="#" id="go-forgot">ลืมรหัสผ่าน?</a>
+        </div>
+      </form>
+
+      <!-- Registration Form -->
+      <form id="register-form" class="auth-form hidden">
+        <h2>ลงทะเบียนบัญชี</h2>
+        <div class="form-group">
+          <label for="register-username"><i class="fa-solid fa-user"></i> ชื่อผู้ใช้ (Username)</label>
+          <input type="text" id="register-username" required placeholder="ภาษาอังกฤษเท่านั้น">
+        </div>
+        <div class="form-group">
+          <label for="register-email"><i class="fa-solid fa-envelope"></i> อีเมล (Email)</label>
+          <input type="email" id="register-email" required placeholder="เช่น staff@toat.sandbox">
+        </div>
+        <div class="form-group">
+          <label for="register-password"><i class="fa-solid fa-lock"></i> รหัสผ่าน</label>
+          <input type="password" id="register-password" required placeholder="อย่างน้อย 6 ตัวอักษร">
+        </div>
+        
+        <!-- ข้อมูลสำคัญประวัติพนักงาน -->
+        <div class="form-group">
+          <label for="register-employee-id"><i class="fa-solid fa-id-card"></i> รหัสพนักงาน</label>
+          <input type="text" id="register-employee-id" required placeholder="เช่น EMP1234">
+        </div>
+        <div class="form-group">
+          <label for="register-division"><i class="fa-solid fa-building-user"></i> กอง</label>
+          <input type="text" id="register-division" required placeholder="เช่น กองพัฒนาพลังงานทดแทน">
+        </div>
+        <div class="form-group">
+          <label for="register-department"><i class="fa-solid fa-sitemap"></i> ส่วนงาน/สำนัก/ฝ่าย</label>
+          <input type="text" id="register-department" required placeholder="เช่น ส่วนพัฒนาทดสอบ">
+        </div>
+        <div class="form-group">
+          <label for="register-line-id"><i class="fa-brands fa-line"></i> ไลน์ไอดี (Line ID)</label>
+          <input type="text" id="register-line-id" required placeholder="เช่น mylineid">
+        </div>
+        <div class="form-group">
+          <label for="register-phone-number"><i class="fa-solid fa-phone"></i> หมายเลขโทรศัพท์</label>
+          <input type="tel" id="register-phone-number" required placeholder="เช่น 0812345678">
+        </div>
+        
+        <button type="submit" class="btn btn-success btn-block">ยืนยันลงทะเบียน</button>
+        <div class="auth-links">
+          <a href="#" id="go-login-from-reg">มีบัญชีผู้ใช้อยู่แล้ว? เข้าสู่ระบบ</a>
+        </div>
+      </form>
+
+      <!-- Forgot Password Form -->
+      <form id="forgot-form" class="auth-form hidden">
+        <h2>กู้คืนรหัสผ่าน</h2>
+        <p class="form-subtitle">ระบบจะส่งลิงก์เพื่อรีเซ็ตรหัสผ่านไปยังอีเมลของคุณ</p>
+        <div class="form-group">
+          <label for="forgot-email"><i class="fa-solid fa-envelope"></i> อีเมลที่ลงทะเบียนไว้</label>
+          <input type="email" id="forgot-email" required placeholder="เช่น email@example.com">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">ส่งลิงก์กู้คืน</button>
+        <div class="auth-links">
+          <a href="#" id="go-login-from-forgot">กลับไปยังหน้าเข้าสู่ระบบ</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MAIN APP CONTAINER                         -->
+  <!-- ========================================== -->
+  <div id="app-container" class="app-layout hidden">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar glassmorphism">
+      <div class="brand">
+        <img src="/images/logo.png" alt="TOAT Sandbox Logo" class="brand-logo-img">
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar">
+          <i class="fa-solid fa-circle-user"></i>
+        </div>
+        <div class="user-info">
+          <span class="user-name" id="display-username">Loading...</span>
+          <span class="user-role badge" id="display-role">Staff</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <a href="#" class="nav-link active" data-view="dashboard">
+              <i class="fa-solid fa-chart-line"></i> แดชบอร์ดบริหาร
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-view="projects-list">
+              <i class="fa-solid fa-folder-open"></i> รายการโครงการ
+            </a>
+          </li>
+          <li class="admin-only hidden">
+            <a href="#" class="nav-link" data-view="admin-panel">
+              <i class="fa-solid fa-gears"></i> จัดการระบบ (Admin)
+            </a>
+          </li>
+          <li class="notification-item">
+            <a href="#" id="notification-toggle">
+              <i class="fa-solid fa-bell"></i> แจ้งเตือน
+              <span class="noti-count hidden" id="noti-badge">0</span>
+            </a>
+            <div class="noti-dropdown glassmorphism hidden" id="noti-dropdown">
+              <div class="noti-header">
+                <h3>การแจ้งเตือน</h3>
+                <button class="btn btn-text btn-xs" id="clear-notifications">อ่านทั้งหมด</button>
+              </div>
+              <ul id="noti-list">
+                <li class="empty-noti">ไม่มีการแจ้งเตือนค้างอยู่</li>
+              </ul>
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn btn-danger btn-block" id="logout-btn">
+          <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Navigation controls with Back History Buttons (Global Header) -->
+      <header class="content-header">
+        <div class="nav-history-controls">
+          <button class="btn btn-secondary btn-icon-text" id="back-home-btn" title="ย้อนกลับไปหน้าแดชบอร์ดหลัก">
+            <i class="fa-solid fa-house"></i> หน้าหลัก
+          </button>
+          <button class="btn btn-secondary btn-icon-text" id="back-prev-btn" title="ย้อนกลับไปหน้าก่อนหน้า">
+            <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
+          </button>
+        </div>
+        <div class="header-right">
+          <span id="current-system-time" class="system-time"></span>
+        </div>
+      </header>
+
+      <!-- Views Container -->
+      <div class="view-panel">
+
+        <!-- 1. Executive Dashboard View -->
+        <section id="view-dashboard" class="app-view">
+          <div class="view-header no-print" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h2>แดชบอร์ดติดตามโครงการ</h2>
+              <p>ภาพรวมสถิติโครงการ งบประมาณรวม และสถานะการดำเนินงานของ TOAT Sandbox</p>
+            </div>
+            <button class="btn btn-success" id="download-dashboard-report-btn">
+              <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลดรายงานผู้บริหาร (PDF)
+            </button>
+          </div>
+
+          <!-- Top Metric Cards -->
+          <div class="kpi-grid no-print">
+            <div class="kpi-card glassmorphism budget-allocated">
+              <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
+              <div class="kpi-data">
+                <h3>งบประมาณจัดสรรรวม</h3>
+                <p id="kpi-total-allocated">฿0.00</p>
+              </div>
+            </div>
+            <div class="kpi-card glassmorphism budget-spent">
+              <div class="kpi-icon"><i class="fa-solid fa-receipt"></i></div>
+              <div class="kpi-data">
+                <h3>งบประมาณใช้จ่ายรวม</h3>
+                <p id="kpi-total-spent">฿0.00</p>
+              </div>
+            </div>
+            <div class="kpi-card glassmorphism budget-remaining">
+              <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+              <div class="kpi-data">
+                <h3>งบประมาณคงเหลือรวม</h3>
+                <p id="kpi-total-remaining">฿0.00</p>
+              </div>
+            </div>
+            <div class="kpi-card glassmorphism project-status-kpi">
+              <div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+              <div class="kpi-data">
+                <h3>สถานะโครงการ</h3>
+                <div class="status-summary-grid">
+                  <div><span>เริ่ม:</span> <strong id="kpi-status-not-started">0</strong></div>
+                  <div><span>ทำอยู่:</span> <strong id="kpi-status-in-progress">0</strong></div>
+                  <div><span>ล่าช้า:</span> <strong id="kpi-status-delayed">0</strong></div>
+                  <div><span>เสร็จ:</span> <strong id="kpi-status-completed">0</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Executive Summary Section (Pie Chart & Monthly Report Status) -->
+          <div class="dashboard-charts-summary-row no-print" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+            <!-- Pie Chart Card -->
+            <div class="summary-chart-card card glassmorphism" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; min-height: 320px;">
+              <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-chart-pie"></i> ดัชนีความคืบหน้าภาพรวม</h3>
+              <div class="chart-wrapper" style="position: relative; width: 200px; height: 200px; margin-top: 1rem;">
+                <canvas id="overall-progress-pie-chart"></canvas>
+                <div class="chart-center-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <span id="chart-center-percentage" style="font-size: 1.6rem; font-weight: bold; color: var(--primary); line-height: 1.1;">0%</span>
+                  <span style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap;">สำเร็จเฉลี่ย</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Executive Summary (Report Submission Status) -->
+            <div class="executive-summary-card card glassmorphism" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px;">
+              <div class="section-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;"><i class="fa-solid fa-file-shield"></i> สรุปการรายงานผลประจำเดือน (ผู้บริหาร)</h3>
+                <span class="badge" id="executive-summary-cycle-lbl" style="background-color: var(--primary); font-size: 0.8rem; padding: 0.3rem 0.6rem;">รอบรายงาน...</span>
+              </div>
+              <div class="executive-status-lists" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; flex-grow: 1; overflow-y: auto; max-height: 240px;">
+                <!-- Reported list -->
+                <div class="report-status-group-box">
+                  <h4 style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: 0.3rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                    <i class="fa-solid fa-circle-check"></i> รายงานแล้ว (<span id="count-reported-lbl">0</span>)
+                  </h4>
+                  <ul id="list-reported-projects" style="list-style: none; padding-left: 0; font-size: 0.85rem; line-height: 1.6; color: var(--text-light);">
+                    <!-- Dynamic -->
+                  </ul>
+                </div>
+                <!-- Not Reported list -->
+                <div class="report-status-group-box">
+                  <h4 style="color: var(--danger); border-bottom: 2px solid var(--danger); padding-bottom: 0.3rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                    <i class="fa-solid fa-circle-xmark"></i> ยังไม่รายงาน (<span id="count-unreported-lbl">0</span>)
+                  </h4>
+                  <ul id="list-unreported-projects" style="list-style: none; padding-left: 0; font-size: 0.85rem; line-height: 1.6; color: var(--text-light);">
+                    <!-- Dynamic -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Projects Completion List -->
+          <div class="dashboard-section card glassmorphism no-print">
+            <div class="section-header">
+              <h3><i class="fa-solid fa-bars-progress"></i> ดัชนีความคืบหน้าโครงการทั้งหมด</h3>
+            </div>
+            <div class="projects-progress-table-container">
+              <table class="progress-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อโครงการ</th>
+                    <th>สถานะ</th>
+                    <th>ความคืบหน้าเฉลี่ย</th>
+                    <th>งบประมาณจัดสรร</th>
+                    <th>งบประมาณที่ใช้</th>
+                    <th>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-projects-body">
+                  <tr>
+                    <td colspan="6" class="text-center">กำลังโหลดข้อมูลโครงการ...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Project Group Lists (3 Rows / 3 Sections) -->
+          <div class="dashboard-section card glassmorphism margin-top-lg no-print">
+            <div class="section-header" style="margin-bottom: 1rem;">
+              <h3><i class="fa-solid fa-cubes"></i> ความก้าวหน้าแบ่งตามกลุ่มโครงการ (Project Groups)</h3>
+            </div>
+            
+            <div class="project-groups-rows" style="display: flex; flex-direction: column; gap: 1.5rem;">
+              <!-- Row 1: TOAT Sandbox -->
+              <div class="project-group-row-item" style="border-left: 4px solid var(--primary); padding-left: 1rem;">
+                <h4 style="font-size: 1rem; color: var(--primary); margin-bottom: 0.5rem;"><i class="fa-solid fa-rocket"></i> โครงการ TOAT Sandbox</h4>
+                <div class="project-group-horizontal-list" id="group-list-sandbox" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                  <!-- Dynamic small cards -->
+                </div>
+              </div>
+
+              <!-- Row 2: อยู่ระหว่างนำเสนอ -->
+              <div class="project-group-row-item" style="border-left: 4px solid var(--secondary); padding-left: 1rem;">
+                <h4 style="font-size: 1rem; color: var(--secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-file-lines"></i> โครงการอยู่ระหว่างนำเสนอ</h4>
+                <div class="project-group-horizontal-list" id="group-list-proposal" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                  <!-- Dynamic small cards -->
+                </div>
+              </div>
+
+              <!-- Row 3: โครงการเดิมที่ดำเนินงานจริง -->
+              <div class="project-group-row-item" style="border-left: 4px solid var(--success); padding-left: 1rem;">
+                <h4 style="font-size: 1rem; color: var(--success); margin-bottom: 0.5rem;"><i class="fa-solid fa-briefcase"></i> โครงการเดิมที่ดำเนินงานจริง</h4>
+                <div class="project-group-horizontal-list" id="group-list-production" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                  <!-- Dynamic small cards -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          
+        </section>
+
+
+        <!-- 2. Projects List View (Same as dashboard but lists projects in detail card formats with quick actions) -->
+        <section id="view-projects-list" class="app-view hidden">
+          <div class="view-header">
+            <div class="header-action-container">
+              <div>
+                <h2>รายการโครงการทั้งหมด</h2>
+                <p>ค้นหาและคัดเลือกโครงการในความรับผิดชอบของคุณ</p>
+              </div>
+              <button class="btn btn-primary" id="open-create-project-modal-btn">
+                <i class="fa-solid fa-plus"></i> สร้างโครงการใหม่
+              </button>
+            </div>
+          </div>
+
+          <div class="project-cards-grid" id="project-cards-container">
+            <!-- Dynamic project cards go here -->
+          </div>
+        </section>
+
+
+        <!-- 3. Project Workspace View (Tabbed UI) -->
+        <section id="view-project-workspace" class="app-view hidden">
+          <div class="workspace-header glassmorphism">
+            <div class="workspace-title-area">
+              <span class="workspace-project-status badge" id="ws-project-status">In Progress</span>
+              <h2 id="ws-project-name">ชื่อโครงการโหลด...</h2>
+              <p id="ws-project-desc">รายละเอียดโครงการ...</p>
+              <button class="btn btn-warning btn-xs hidden" id="ws-edit-project-btn" style="margin-top: 10px;">
+                <i class="fa-solid fa-pen-to-square"></i> แก้ไขรายละเอียดโครงการ
+              </button>
+            </div>
+            <div class="workspace-overall-progress-bar">
+              <div class="progress-info">
+                <span>ความคืบหน้าโครงการ</span>
+                <span id="ws-overall-progress-text">0%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="ws-overall-progress-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs Navigation -->
+          <div class="workspace-tabs-nav">
+            <button class="tab-btn active" data-tab="tab-team"><i class="fa-solid fa-users"></i> สมาชิก & ผู้เกี่ยวข้อง</button>
+            <button class="tab-btn" data-tab="tab-budget"><i class="fa-solid fa-coins"></i> งบประมาณจัดสรร</button>
+            <button class="tab-btn" data-tab="tab-gantt"><i class="fa-solid fa-chart-gantt"></i> แผนงาน Gantt & ความคืบหน้า</button>
+            <button class="tab-btn" data-tab="tab-reports"><i class="fa-solid fa-file-invoice"></i> รายงานประจำเดือน</button>
+          </div>
+
+          <!-- Tabs Content -->
+          <div class="workspace-tabs-content">
+
+            <!-- Tab 1: Profile & Team -->
+            <div id="tab-team" class="tab-pane active">
+              <div class="team-grid">
+                <!-- Project Members (Staff) -->
+                <div class="team-section card glassmorphism">
+                  <div class="section-header">
+                    <h3><i class="fa-solid fa-user-gear"></i> ทีมงานผู้รับผิดชอบโครงการ (Project Members)</h3>
+                    <button class="btn btn-success btn-sm" id="add-member-btn"><i class="fa-solid fa-plus"></i> เพิ่มสมาชิก</button>
+                  </div>
+                  <div class="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>รูปถ่าย</th>
+                          <th>รหัสพนักงาน</th>
+                          <th>ชื่อ-สกุล</th>
+                          <th>ตำแหน่ง</th>
+                          <th>กอง</th>
+                          <th>ฝ่าย/สำนัก</th>
+                          <th>การจัดการ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ws-members-table-body">
+                        <!-- Dynamic list -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Project Stakeholders (Sponsors & Advisors) -->
+                <div class="team-section card glassmorphism">
+                  <div class="section-header">
+                    <h3><i class="fa-solid fa-user-tie"></i> ผู้มีส่วนเกี่ยวข้องโครงการ (Stakeholders)</h3>
+                    <button class="btn btn-success btn-sm" id="add-stakeholder-btn"><i class="fa-solid fa-plus"></i> เพิ่มผู้เกี่ยวข้อง</button>
+                  </div>
+                  <div class="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>รหัสพนักงาน</th>
+                          <th>ชื่อ-สกุล</th>
+                          <th>ตำแหน่ง</th>
+                          <th>กอง</th>
+                          <th>ฝ่าย/สำนัก</th>
+                          <th>หน้าที่สำหรับโครงการ</th>
+                          <th>การจัดการ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ws-stakeholders-table-body">
+                        <!-- Dynamic list -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 2: Budget -->
+            <div id="tab-budget" class="tab-pane">
+              <div class="budget-view-card card glassmorphism">
+                <div class="section-header">
+                  <h3><i class="fa-solid fa-receipt"></i> ตารางตรวจสอบงบประมาณรายจ่าย</h3>
+                  <button class="btn btn-primary btn-sm" id="add-budget-item-btn"><i class="fa-solid fa-plus"></i> เพิ่มรายการงบประมาณ</button>
+                </div>
+                
+                <!-- Rollup summaries per project -->
+                <div class="budget-rollup-bar">
+                  <div class="rollup-item">
+                    <span>งบจัดสรรรวมโครงการ</span>
+                    <strong id="ws-budget-total-allocated">฿0.00</strong>
+                  </div>
+                  <div class="rollup-item">
+                    <span>เบิกจ่ายไปแล้ว</span>
+                    <strong id="ws-budget-total-spent" class="text-danger">฿0.00</strong>
+                  </div>
+                  <div class="rollup-item">
+                    <span>งบประมาณคงเหลือ</span>
+                    <strong id="ws-budget-total-remaining" class="text-success">฿0.00</strong>
+                  </div>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto;">
+                  <table style="min-width: 1100px;">
+                    <thead>
+                      <tr>
+                        <th style="min-width:180px;">ชื่อรายการ / รายละเอียด</th>
+                        <th style="min-width:130px;">ประเภทงบ</th>
+                        <th style="min-width:150px;">หน่วยงานเจ้าของงบ</th>
+                        <th style="min-width:120px; text-align:right;">งบจัดสรร (บาท)</th>
+                        <th style="min-width:120px; text-align:right;">เบิกจ่ายแล้ว (บาท)</th>
+                        <th style="min-width:130px; text-align:right;">งบคงเหลือ (บาท)</th>
+                        <th style="min-width:80px; text-align:center;">คงเหลือ (%)</th>
+                        <th style="min-width:110px; text-align:center;">เอกสารอนุมัติ</th>
+                        <th style="min-width:110px; text-align:center;">ประเภทการจ่าย</th>
+                        <th style="min-width:110px; text-align:center;">หลักฐานจ่าย</th>
+                        <th style="min-width:130px;">หมายเหตุ</th>
+                        <th style="min-width:90px; text-align:center;">การจัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ws-budget-table-body">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Gantt Chart & Progress -->
+            <div id="tab-gantt" class="tab-pane">
+              <div class="gantt-view-card card glassmorphism">
+                <div class="section-header">
+                  <h3><i class="fa-solid fa-chart-gantt"></i> แผนความคืบหน้างานรายโครงการ (Gantt Chart & Progress Timeline)</h3>
+                  <button class="btn btn-primary btn-sm" id="add-gantt-task-btn"><i class="fa-solid fa-plus"></i> เพิ่มแผนงาน</button>
+                </div>
+
+                <!-- Interactive Gantt Visualization Container -->
+                <div class="gantt-zoom-controls no-print" style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-magnifying-glass-plus"></i> ขนาดแผนภูมิ Gantt:</span>
+                  <button class="btn btn-secondary btn-xs" id="gantt-zoom-out-btn" type="button"><i class="fa-solid fa-minus"></i> ย่อ</button>
+                  <span id="gantt-zoom-label" style="font-size: 0.8rem; font-weight: 600; min-width: 50px; text-align: center;">100% (ปกติ)</span>
+                  <button class="btn btn-secondary btn-xs" id="gantt-zoom-in-btn" type="button"><i class="fa-solid fa-plus"></i> ขยาย</button>
+                  <button class="btn btn-primary btn-xs" id="gantt-zoom-fit-btn" type="button"><i class="fa-solid fa-expand"></i> พอดีหน้าจอ</button>
+                </div>
+                <div class="gantt-chart-wrapper gantt-md" id="gantt-wrapper">
+                  <div class="gantt-timeline-quarter-header" id="gantt-timeline-quarter-header">
+                    <!-- Dynamic quarter titles (e.g. Q1, Q2) spanning matching columns -->
+                  </div>
+                  <div class="gantt-timeline-header" id="gantt-timeline-header">
+                    <!-- Dynamic timeline dates/months will be drawn here -->
+                  </div>
+                  <div class="gantt-rows" id="gantt-chart-rows">
+                    <!-- Dynamic Gantt bars will be painted here -->
+                  </div>
+                </div>
+
+                <!-- Scroll Controls for Gantt Timeline -->
+                <div class="gantt-scroll-controls no-print">
+                  <button class="scroll-gantt-btn" id="gantt-scroll-left-btn" type="button">
+                    <i class="fa-solid fa-arrow-left-long"></i> เลื่อนแถว Gantt ไปซ้าย
+                  </button>
+                  <button class="scroll-gantt-btn" id="gantt-scroll-right-btn" type="button">
+                    เลื่อนแถว Gantt ไปขวา <i class="fa-solid fa-arrow-right-long"></i>
+                  </button>
+                </div>
+
+                <div class="table-container margin-top-lg">
+                  <h4>รายละเอียดสถิติงานรายโครงการ</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>งานหลัก (Main Task)</th>
+                        <th>งานย่อย (Sub Task)</th>
+                        <th>ผู้รับผิดชอบ</th>
+                        <th>วันเริ่มแผน</th>
+                        <th>วันสิ้นสุดแผน</th>
+                        <th>ความคืบหน้า (%)</th>
+                        <th>เอกสารแนบ</th>
+                        <th>อัปเดตล่าสุด</th>
+                        <th>การจัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ws-gantt-table-body">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 4: Monthly Reports -->
+            <div id="tab-reports" class="tab-pane">
+              <div class="reports-view-card card glassmorphism">
+                <div class="section-header">
+                  <h3><i class="fa-solid fa-file-invoice"></i> รายการส่งรายงานสรุปโครงการประจำเดือน</h3>
+                  <button class="btn btn-success btn-sm" id="create-monthly-report-btn"><i class="fa-solid fa-file-circle-plus"></i> จัดทำรายงานใหม่</button>
+                </div>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>รายงานประจำรอบเดือน</th>
+                        <th>สรุปสาระสำคัญ</th>
+                        <th>สถานะเอกสาร</th>
+                        <th>ยื่นส่งเมื่อ</th>
+                        <th>เอกสารประกอบ</th>
+                        <th>เข้าชม / พิมพ์รายงาน</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ws-reports-table-body">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- 4. Official Monthly Report View (A4 Portrait Layout) -->
+        <section id="view-monthly-report-detail" class="app-view hidden">
+          <div class="report-actions-bar no-print">
+            <button class="btn btn-secondary" id="back-to-workspace-btn"><i class="fa-solid fa-reply"></i> กลับไปยังพื้นที่ทำงานโครงการ</button>
+            <button class="btn btn-primary" id="print-pdf-report-btn"><i class="fa-solid fa-print"></i> พิมพ์รายงานสรุปเป็น PDF (ขนาด A4)</button>
+          </div>
+
+          <!-- Printable Container -->
+          <div class="a4-container-wrapper">
+            <div class="a4-sheet" id="printable-report-sheet">
+              <!-- Header -->
+              <div class="report-a4-header">
+                <img src="/images/logo.png" alt="TOAT Sandbox Logo" class="report-logo-img">
+                <div class="header-title">
+                  <h2>รายงานสรุปความคืบหน้าโครงการประจำเดือน</h2>
+                  <p>ฝ่ายบริหารโครงการเทคโนโลยีและนวัตกรรม (TOAT Sandbox)</p>
+                </div>
+              </div>
+
+              <hr class="report-divider">
+
+              <!-- Report Metadata Grid -->
+              <div class="report-meta-grid">
+                <div><span>ชื่อโครงการ:</span> <strong id="rep-proj-name">...</strong></div>
+                <div><span>รอบรายงานประจำเดือน:</span> <strong id="rep-month-year">...</strong></div>
+                <div><span>สถานะความคืบหน้าโครงการ:</span> <span class="badge" id="rep-proj-status">...</span></div>
+                <div><span>อัตราความคืบหน้ารวม:</span> <strong id="rep-proj-progress">0%</strong></div>
+                <div><span>วันเวลาที่นำส่งรายงาน:</span> <span id="rep-submitted-at">...</span></div>
+                <div><span>สถานะรายงาน:</span> <span class="badge" id="rep-status">...</span></div>
+              </div>
+
+              <!-- Main Content Blocks -->
+              <div class="report-section">
+                <h4>1. สรุปสาระสำคัญและการดำเนินงานในรอบเดือน (Project Summary)</h4>
+                <div class="report-text-block" id="rep-summary-text">...</div>
+              </div>
+
+              <div class="report-section">
+                <h4>2. ปัญหา อุปสรรค และแนวทางการแก้ไข (Issues & Solutions)</h4>
+                <div class="report-text-block" id="rep-issues-text">...</div>
+              </div>
+
+              <div class="report-section">
+                <h4>3. รายงานสรุปสถานะงบประมาณโครงการ (Project Budget Summary)</h4>
+                
+                <!-- Rollup Summary Table -->
+                <table class="report-table" style="margin-bottom: 1rem;">
+                  <thead>
+                    <tr>
+                      <th>งบจัดสรรรวมโครงการ</th>
+                      <th>เบิกจ่ายแล้วสะสม</th>
+                      <th>งบประมาณคงเหลือสุทธิ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="rep-budget-allocated" style="font-weight: 700;">฿0.00</td>
+                      <td id="rep-budget-spent" class="text-danger" style="font-weight: 700;">฿0.00</td>
+                      <td id="rep-budget-remaining" class="text-success" style="font-weight: 700;">฿0.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <!-- Detailed Budget Table -->
+                <div style="margin-top: 1rem;">
+                  <h5 style="margin: 0.5rem 0; font-size: 0.85rem; color: var(--text-primary);">รายละเอียดรายการงบประมาณรายจ่าย</h5>
+                  <div style="overflow-x: auto; width: 100%;">
+                    <table class="report-table" style="min-width: 950px; font-size: 0.78rem;">
+                      <thead>
+                        <tr>
+                          <th style="text-align: left; min-width: 150px;">ชื่อรายการ / รายละเอียด</th>
+                          <th style="width: 90px;">ประเภทงบ</th>
+                          <th style="width: 120px;">หน่วยงานเจ้าของงบ</th>
+                          <th style="width: 100px; text-align: right;">งบจัดสรร (บาท)</th>
+                          <th style="width: 100px; text-align: right;">เบิกจ่ายแล้ว (บาท)</th>
+                          <th style="width: 100px; text-align: right;">งบคงเหลือ (บาท)</th>
+                          <th style="width: 60px; text-align: center;">คงเหลือ (%)</th>
+                          <th style="width: 80px; text-align: center;">เอกสารอนุมัติ</th>
+                          <th style="width: 80px; text-align: center;">ประเภทการจ่าย</th>
+                          <th style="width: 80px; text-align: center;">หลักฐานจ่าย</th>
+                          <th>หมายเหตุ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rep-budget-items-body">
+                        <!-- Dynamic detailed rows -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-section" id="rep-attachment-section">
+                <h4>4. ลิงก์เอกสารแนบประกอบรายงาน (Attachments)</h4>
+                <div id="rep-attachment-link">ไม่มีเอกสารแนบ</div>
+              </div>
+
+              <!-- Signature Area -->
+              <div class="report-signature-block">
+                <div class="signature-line">
+                  <p>ลงชื่อ............................................................ ผู้รายงาน</p>
+                  <p>( ผู้รับผิดชอบโครงการประจำ TOAT Sandbox )</p>
+                </div>
+                <div class="signature-line">
+                  <p>ลงชื่อ............................................................ ผู้อนุมัติ</p>
+                  <p>( คณะกรรมการโครงการฝ่ายบริหาร Executive )</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feedback & Discussion Area (Bottom - No Print) -->
+          <div class="feedback-comments-card card glassmorphism no-print margin-top-xl">
+            <div class="section-header">
+              <h3><i class="fa-solid fa-comments"></i> ความคิดเห็นและข้อเสนอแนะอย่างเป็นทางการโดยผู้บริหาร (Executive Comments)</h3>
+            </div>
+            
+            <!-- Executive Approval actions -->
+            <div class="exec-actions-box hidden" id="exec-status-change-box">
+              <p>จัดการสถานะอนุมัติเอกสารรายงานนี้:</p>
+              <button class="btn btn-success" id="btn-approve-report"><i class="fa-solid fa-check"></i> อนุมัติรายงานนี้ (Approve)</button>
+              <button class="btn btn-warning" id="btn-reject-report"><i class="fa-solid fa-circle-xmark"></i> ส่งกลับแก้ไข (Reject to Draft)</button>
+            </div>
+
+            <!-- Comments Thread list -->
+            <div class="comments-list" id="report-comments-list">
+              <!-- Dynamic comments -->
+              <div class="no-comments">ยังไม่มีผู้บริหารเขียนข้อเสนอแนะเพิ่มเติมสำหรับรายงานฉบับนี้</div>
+            </div>
+
+            <!-- Add Comment Form -->
+            <form id="add-comment-form" class="comment-form">
+              <div class="form-group">
+                <label for="comment-text-input">เขียนข้อเสนอแนะอย่างเป็นทางการ:</label>
+                <textarea id="comment-text-input" required placeholder="ป้อนข้อแนะนำ คำถาม หรือผลตอบรับเพื่อแจ้งแก่ผู้รับผิดชอบโครงการ..." rows="3"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> ส่งข้อเสนอแนะ</button>
+            </form>
+          </div>
+        </section>
+
+
+        <!-- 5. Admin Panel Settings View -->
+        <section id="view-admin-panel" class="app-view hidden">
+          <div class="view-header">
+            <h2>จัดการระบบ (Admin Panel & settings)</h2>
+            <p>หน้าควบคุมการแต่งตั้งตำแหน่งผู้ใช้, คัดสรรบทบาท, ตั้งค่าระบบแจ้งเตือน และการจำลองระบบแจ้งเตือน</p>
+          </div>
+
+          <div class="admin-grid">
+            <!-- Project Management Card -->
+            <div class="admin-card card glassmorphism">
+              <h3><i class="fa-solid fa-folder-tree"></i> การจัดการรายชื่อโครงการ (Project Management)</h3>
+              <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">รายการโครงการทั้งหมด</span>
+                <button class="btn btn-primary btn-sm" id="admin-create-project-btn">
+                  <i class="fa-solid fa-plus"></i> เพิ่มโครงการ
+                </button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>ชื่อโครงการ</th>
+                      <th>กลุ่มโครงการ</th>
+                      <th>สถานะ</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-projects-table-body">
+                    <!-- Dynamic projects -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Left Side: User management & Role Assignments -->
+            <div class="admin-card card glassmorphism">
+              <h3><i class="fa-solid fa-users-gear"></i> การจัดการบัญชีและแต่งตั้งบทบาทผู้ใช้งาน</h3>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ชื่อผู้ใช้</th>
+                      <th>อีเมล</th>
+                      <th>รหัสพนักงาน</th>
+                      <th>กอง/ส่วนงาน/ฝ่าย</th>
+                      <th>ติดต่อ (Line/โทร)</th>
+                      <th>สิทธิ์เข้าใช้งานหน้าต่าง</th>
+                      <th>เปลี่ยนบทบาท</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-table-body">
+                    <!-- Dynamic users -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right Side: Configs & Automation trigger checks -->
+            <div class="admin-card card glassmorphism">
+              <h3><i class="fa-solid fa-clock"></i> การตั้งค่ากำหนดส่งและทดสอบการสแกนรายงานประจำเดือน</h3>
+              
+              <!-- Deadline Config Form -->
+              <form id="admin-deadline-form" class="admin-sub-form">
+                <div class="form-group">
+                  <label for="admin-deadline-day">วันสิ้นสุดกำหนดส่งรายงานประจำเดือน (ของเดือนถัดไป):</label>
+                  <div class="input-inline-group">
+                    <input type="number" id="admin-deadline-day" min="1" max="31" required placeholder="เช่น 5">
+                    <span>(เช่น วันที่ 5 ของเดือนถัดไป)</span>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">บันทึกวันกำหนดส่ง</button>
+              </form>
+
+              <hr class="card-divider">
+
+              <!-- Manual Trigger Panel -->
+              <div class="automation-test-box">
+                <h4><i class="fa-solid fa-bolt"></i> การจำลองระบบประมวลผลการส่งรายงานประจำรอบเดือน (Manual Test Trigger)</h4>
+                <p>คลิกปุ่มด้านล่างเพื่อสั่งงานเซิร์ฟเวอร์หลังบ้านให้ทำการสแกนหาโครงการที่ล่าช้า/ค้างส่งรายงานในรอบเดือนที่ผ่านมาทันที ระบบจะออกคำเตือน In-App Notification และทำการจำลองส่งอีเมลแจ้งเตือนไปยังพนักงานที่ดูแลโครงการนั้นโดยอัตโนมัติ</p>
+                <button class="btn btn-warning" id="admin-manual-trigger-btn">
+                  <i class="fa-solid fa-circle-exclamation"></i> เริ่มตรวจสอบและจำลองส่งอีเมลแจ้งเตือน
+                </button>
+                <div id="trigger-result-log" class="trigger-log hidden">
+                  <!-- Output logs -->
+                </div>
+              </div>
+
+              <hr class="card-divider">
+
+              <!-- Assignment mapping user to project -->
+              <div class="project-assign-box">
+                <h4><i class="fa-solid fa-link"></i> มอบหมายโครงการให้ทีมงาน Staff รับผิดชอบ</h4>
+                <form id="admin-assign-form" class="admin-sub-form">
+                  <div class="form-group">
+                    <label for="assign-project-id">เลือกโครงการ:</label>
+                    <select id="assign-project-id" required>
+                      <!-- Dynamic select -->
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="assign-user-id">เลือกชื่อผู้ใช้พนักงาน (Staff):</label>
+                    <select id="assign-user-id" required>
+                      <!-- Dynamic select of staff users -->
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-success">ยืนยันมอบหมายโครงการ</button>
+                </form>
+
+                <div class="table-container margin-top-md">
+                  <h5>สิทธิ์การดูแลโครงการในปัจจุบัน:</h5>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ชื่อโครงการ</th>
+                        <th>ผู้ได้รับสิทธิ์</th>
+                        <th>อีเมล</th>
+                        <th>ยกเลิกสิทธิ์</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-assignments-table-body">
+                      <!-- Dynamic mapping -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL WINDOWS (Using native <dialog>)       -->
+  <!-- ========================================== -->
+
+  <!-- Modal: Pending Approvals Alert -->
+  <dialog id="modal-pending-approvals" closedby="any" aria-labelledby="lbl-pending-approvals">
+    <div class="modal-content" style="max-width: 900px; width: 95%;">
+      <div class="modal-header">
+        <h3 id="lbl-pending-approvals" style="color: var(--warning);"><i class="fa-solid fa-user-check"></i> อนุมัติสิทธิ์เข้าใช้งานสำหรับสมาชิกใหม่</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-pending-approvals').close()">&times;</button>
+      </div>
+      <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">พบผู้สมัครสมาชิกใหม่ที่รอการอนุมัติสิทธิ์การเข้าใช้งาน โปรดกดยืนยันเพื่ออนุมัติสิทธิ์หรือปฏิเสธคำขอ</p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ชื่อผู้ใช้ / อีเมล</th>
+              <th>รหัสพนักงาน</th>
+              <th>กอง</th>
+              <th>ส่วนงาน/สำนัก/ฝ่าย</th>
+              <th>ไลน์ไอดี / โทรศัพท์</th>
+              <th style="width: 160px;">จัดการสิทธิ์</th>
+            </tr>
+          </thead>
+          <tbody id="pending-users-table-body">
+            <!-- Dynamic pending users -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-pending-approvals').close()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal 1: Create Project -->
+  <dialog id="modal-create-project" closedby="any" aria-labelledby="lbl-create-project">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-create-project">สร้างโครงการใหม่ใน TOAT Sandbox</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-create-project').close()">&times;</button>
+      </div>
+      <form id="form-create-project">
+        <input type="hidden" id="edit-project-id">
+        <div class="form-group">
+          <label for="proj-name-input">ชื่อโครงการ:</label>
+          <input type="text" id="proj-name-input" required placeholder="เช่น ระบบการจัดการพลังงานอาคารอัจฉริยะ">
+        </div>
+        <div class="form-group">
+          <label for="proj-desc-input">คำอธิบายรายละเอียดโครงการ:</label>
+          <textarea id="proj-desc-input" placeholder="รายละเอียดวัตถุประสงค์ ขอบเขต และเป้าหมาย..." rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="proj-group-input">กลุ่มโครงการ:</label>
+          <select id="proj-group-input" required>
+            <option value="โครงการ TOAT Sandbox">โครงการ TOAT Sandbox</option>
+            <option value="โครงการอยู่ระหว่างนำเสนอ">โครงการอยู่ระหว่างนำเสนอ</option>
+            <option value="โครงการเดิมที่ดำเนินงานจริง">โครงการเดิมที่ดำเนินงานจริง</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="proj-status-input">สถานะแรกเริ่ม:</label>
+          <select id="proj-status-input">
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Delayed">Delayed</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-create-project').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูลโครงการ</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 2: Add Project Member -->
+  <dialog id="modal-add-member" closedby="any" aria-labelledby="lbl-add-member">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-add-member">เพิ่ม/แก้ไขทีมงานผู้รับผิดชอบโครงการ (Member)</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-add-member').close()">&times;</button>
+      </div>
+      <form id="form-add-member">
+        <input type="hidden" id="edit-member-id">
+        <div class="form-group">
+          <label for="mem-empid-input">รหัสพนักงาน:</label>
+          <input type="text" id="mem-empid-input" required placeholder="เช่น EMP10045">
+        </div>
+        <div class="form-group">
+          <label for="mem-name-input">ชื่อ-สกุล:</label>
+          <input type="text" id="mem-name-input" required placeholder="เช่น นายสมเจต แข็งขัน">
+        </div>
+        <div class="form-group">
+          <label for="mem-position-input">ตำแหน่ง:</label>
+          <input type="text" id="mem-position-input" required placeholder="เช่น วิศวกร 5, นักวิเคราะห์ระบบ">
+        </div>
+        <div class="form-group">
+          <label for="mem-division-input">กอง:</label>
+          <input type="text" id="mem-division-input" required placeholder="เช่น กองบริการคอมพิวเตอร์, กองแผนงาน">
+        </div>
+        <div class="form-group">
+          <label for="mem-dept-input">ฝ่าย/สำนัก:</label>
+          <input type="text" id="mem-dept-input" required placeholder="เช่น ฝ่ายเทคโนโลยีสารสนเทศ, สำนักยุทธศาสตร์">
+        </div>
+        <div class="form-group">
+          <label for="mem-photo-input">รูปถ่ายใบหน้า (ขนาดแนะนำ 1:1 เป็นวงกลม):</label>
+          <input type="file" id="mem-photo-input" name="photo" accept="image/*">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-add-member').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-success" id="btn-submit-member">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 3: Add Stakeholder -->
+  <dialog id="modal-add-stakeholder" closedby="any" aria-labelledby="lbl-add-stakeholder">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-add-stakeholder">เพิ่ม/แก้ไขผู้มีส่วนเกี่ยวข้องโครงการ (Stakeholder)</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-add-stakeholder').close()">&times;</button>
+      </div>
+      <form id="form-add-stakeholder">
+        <input type="hidden" id="edit-stakeholder-id">
+        <div class="form-group">
+          <label for="stk-empid-input">รหัสพนักงาน:</label>
+          <input type="text" id="stk-empid-input" required placeholder="เช่น EMP20012">
+        </div>
+        <div class="form-group">
+          <label for="stk-name-input">ชื่อ-สกุล:</label>
+          <input type="text" id="stk-name-input" required placeholder="เช่น ศ. ดร. มานะ วิจัยดี">
+        </div>
+        <div class="form-group">
+          <label for="stk-position-input">ตำแหน่ง:</label>
+          <input type="text" id="stk-position-input" required placeholder="เช่น CEO, รองผู้ว่าการ">
+        </div>
+        <div class="form-group">
+          <label for="stk-division-input">กอง:</label>
+          <input type="text" id="stk-division-input" required placeholder="เช่น กองเลขานุการ, กองนโยบาย">
+        </div>
+        <div class="form-group">
+          <label for="stk-dept-input">ฝ่าย/สำนัก:</label>
+          <input type="text" id="stk-dept-input" required placeholder="เช่น ฝ่ายบริหารทั่วไป, สำนักผู้ว่าการ">
+        </div>
+        <div class="form-group">
+          <label for="stk-type-input">หน้าที่สำหรับโครงการ:</label>
+          <select id="stk-type-input" required>
+            <option value="Sponsor">สปอนเซอร์โครงการ</option>
+            <option value="Advisor">ที่ปรึกษาโครงการ</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-add-stakeholder').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-success" id="btn-submit-stakeholder">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 4: Add/Edit Budget Item -->
+  <dialog id="modal-add-budget" closedby="any" aria-labelledby="lbl-add-budget">
+    <div class="modal-content" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3 id="lbl-add-budget"><i class="fa-solid fa-receipt"></i> เพิ่ม/แก้ไขรายการงบประมาณรายจ่าย</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-add-budget').close()">&times;</button>
+      </div>
+      <form id="form-add-budget" enctype="multipart/form-data">
+        <input type="hidden" id="edit-budget-id">
+        
+        <!-- Section 1: ข้อมูลรายการ -->
+        <div style="background: var(--surface); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid var(--primary);">
+          <p style="font-weight: 700; margin: 0 0 0.75rem 0; color: var(--primary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">ข้อมูลรายการ</p>
+          <div class="form-group">
+            <label for="bud-name-input">ชื่อรายการรายจ่าย <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="bud-name-input" name="item_name" required placeholder="เช่น อุปกรณ์ไอที, ค่าแรงสัญญาติดตั้ง">
+          </div>
+          <div class="form-group">
+            <label for="bud-detail-input">รายละเอียดการใช้งบประมาณ</label>
+            <textarea id="bud-detail-input" name="detail" rows="2" placeholder="อธิบายรายละเอียดการใช้งบประมาณรายการนี้" style="resize: vertical;"></textarea>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group" style="margin: 0;">
+              <label for="bud-type-input">ประเภทงบที่ใช้ <span style="color:var(--danger)">*</span></label>
+              <select id="bud-type-input" name="budget_type" required>
+                <option value="งบลงทุน">งบลงทุน</option>
+                <option value="งบค่าใช้สอย">งบค่าใช้สอย</option>
+                <option value="งบปฏิบัติการพิเศษ">งบปฏิบัติการพิเศษ</option>
+                <option value="อื่นๆ">อื่นๆ (โปรดระบุ)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;" id="bud-type-other-group">
+              <label for="bud-type-other-input">ระบุประเภทงบอื่นๆ</label>
+              <input type="text" id="bud-type-other-input" name="budget_type_other" placeholder="ระบุประเภทงบประมาณ">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="bud-owner-input">หน่วยงานเจ้าของงบประมาณ</label>
+            <input type="text" id="bud-owner-input" name="owner_unit" placeholder="เช่น ฝ่ายเทคโนโลยีสารสนเทศ, กองแผนและงบประมาณ">
+          </div>
+        </div>
+
+        <!-- Section 2: ข้อมูลงบประมาณ -->
+        <div style="background: var(--surface); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid var(--success);">
+          <p style="font-weight: 700; margin: 0 0 0.75rem 0; color: var(--success); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">ข้อมูลงบประมาณ</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group" style="margin: 0;">
+              <label for="bud-allocated-input">งบจัดสรร (บาท) <span style="color:var(--danger)">*</span></label>
+              <input type="number" id="bud-allocated-input" name="allocated_amount" required min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="bud-spent-input">เบิกจ่ายแล้ว (บาท) <span style="color:var(--danger)">*</span></label>
+              <input type="number" id="bud-spent-input" name="spent_amount" required min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label>งบคงเหลือ (คำนวณอัตโนมัติ)</label>
+            <div id="bud-remaining-display" style="padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); font-weight: 700; font-size: 1rem;">฿0.00 (0%)</div>
+          </div>
+        </div>
+
+        <!-- Section 3: เอกสารและการชำระเงิน -->
+        <div style="background: var(--surface); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid var(--warning);">
+          <p style="font-weight: 700; margin: 0 0 0.75rem 0; color: var(--warning); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">เอกสารและการชำระเงิน</p>
+          <div class="form-group">
+            <label for="bud-approval-doc-input">เอกสารอนุมัติงบประมาณ (ไฟล์แนบ PDF/รูป)</label>
+            <div id="bud-approval-doc-display" style="margin-bottom: 0.4rem; font-size: 0.8rem;"></div>
+            <input type="file" id="bud-approval-doc-input" name="approval_doc" accept=".pdf,.jpg,.jpeg,.png">
+          </div>
+          <div class="form-group">
+            <label for="bud-payment-type-input">รูปแบบการจ่ายเงิน</label>
+            <select id="bud-payment-type-input" name="payment_type">
+              <option value="รายปี">รายปี</option>
+              <option value="รายเดือน">รายเดือน</option>
+              <option value="รายครั้ง (ครั้งเดียว)">รายครั้ง (ครั้งเดียว)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="bud-invoice-input">หลักฐานการจ่ายเงิน / ใบเสร็จรับเงิน (ไฟล์แนบ)</label>
+            <div id="bud-invoice-display" style="margin-bottom: 0.4rem; font-size: 0.8rem;"></div>
+            <input type="file" id="bud-invoice-input" name="invoice" accept=".pdf,.jpg,.jpeg,.png">
+          </div>
+        </div>
+
+        <!-- Section 4: หมายเหตุ -->
+        <div class="form-group">
+          <label for="bud-remarks-input">หมายเหตุ</label>
+          <textarea id="bud-remarks-input" name="remarks" rows="2" placeholder="บันทึกเพิ่มเติม หรือข้อสังเกต" style="resize: vertical;"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-add-budget').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-budget"><i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal: View User Details -->
+  <dialog id="modal-view-user-details" closedby="any" aria-labelledby="lbl-view-user-details">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-view-user-details">รายละเอียดผู้ใช้งาน</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-view-user-details').close()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 0;">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 0.5rem auto;">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <h4 id="detail-username" style="margin: 0; font-size: 1.25rem;">-</h4>
+          <span id="detail-role" class="badge" style="margin-top: 0.25rem;">-</span>
+        </div>
+        
+        <table class="report-table" style="width: 100%; border-collapse: collapse;">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold; width: 40%;">อีเมล:</td><td style="padding: 8px;" id="detail-email">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">รหัสพนักงาน:</td><td style="padding: 8px;" id="detail-empid">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">กอง:</td><td style="padding: 8px;" id="detail-division">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">ฝ่าย/สำนัก:</td><td style="padding: 8px;" id="detail-department">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">Line ID:</td><td style="padding: 8px;" id="detail-lineid">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">เบอร์โทรศัพท์:</td><td style="padding: 8px;" id="detail-phone">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">สถานะอนุมัติสิทธิ์:</td><td style="padding: 8px;" id="detail-approved">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-view-user-details').close()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal 5: Add/Edit Gantt Task -->
+  <dialog id="modal-add-gantt-task" closedby="any" aria-labelledby="lbl-add-gantt-task">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-add-gantt-task">เพิ่มแผนงาน/งานย่อย</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-add-gantt-task').close()">&times;</button>
+      </div>
+      <form id="form-add-gantt-task" enctype="multipart/form-data">
+        <input type="hidden" id="gantt-task-id" name="id">
+        <div class="form-group">
+          <label for="gantt-main-input">งานหลัก (Main Task):</label>
+          <input type="text" id="gantt-main-input" name="main_task" required placeholder="เช่น สำรวจพื้นที่และออกแบบ">
+        </div>
+        <div class="form-group">
+          <label for="gantt-sub-input">งานย่อย (Sub Task):</label>
+          <input type="text" id="gantt-sub-input" name="sub_task" placeholder="เช่น วัดระยะหลังคาโรงรถ">
+        </div>
+        <div class="form-group">
+          <label for="gantt-assignee-input">ผู้รับผิดชอบงาน:</label>
+          <select id="gantt-assignee-input" name="assigned_member_id">
+            <option value="">-- เลือกผู้รับผิดชอบ --</option>
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="gantt-start-input">วันที่เริ่มต้นตามแผน:</label>
+            <input type="date" id="gantt-start-input" name="start_date" required>
+          </div>
+          <div class="form-group">
+            <label for="gantt-end-input">วันที่สิ้นสุดตามแผน:</label>
+            <input type="date" id="gantt-end-input" name="end_date" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="gantt-progress-input">เปอร์เซ็นต์ความคืบหน้า (0 - 100):</label>
+          <div class="range-group">
+            <input type="range" id="gantt-progress-input" name="progress_percent" min="0" max="100" value="0" oninput="document.getElementById('progress-val-lbl').innerText = this.value + '%'">
+            <span id="progress-val-lbl" class="range-val-badge">0%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="gantt-attachments-input">แนบเอกสารความคืบหน้า (ภาพถ่ายหน้างาน, ใบสั่งสินค้า):</label>
+          <input type="file" id="gantt-attachments-input" name="attachments" multiple>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-add-gantt-task').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกแผนงาน</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 6: Create/Edit Monthly Report -->
+  <dialog id="modal-create-monthly-report" closedby="any" aria-labelledby="lbl-create-monthly-report">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="lbl-create-monthly-report">จัดทำรายงานความคืบหน้าโครงการประจำเดือน</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-create-monthly-report').close()">&times;</button>
+      </div>
+      <form id="form-create-monthly-report" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="rep-month-input">รอบรายงานประจำเดือน:</label>
+          <input type="month" id="rep-month-input" required>
+        </div>
+        <div class="form-group">
+          <label for="rep-summary-input">สรุปการดำเนินงานที่ผ่านมาในรอบเดือน (Summary):</label>
+          <textarea id="rep-summary-input" required placeholder="อธิบายงานที่ทำสำเร็จ สัดส่วนงานที่คืบหน้า..." rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="rep-issues-input">ปัญหา อุปสรรค และแนวทางการแก้ปัญหาที่เกิดขึ้น (Issues & Solutions):</label>
+          <textarea id="rep-issues-input" placeholder="เช่น การขนส่งสินค้าล่าช้า ส่งทีมช่างเข้าเสริมเพิ่มคาดแก้ปัญหาได้ใน 2 วัน..." rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="rep-file-input">อัปโหลดเอกสารรายงานประกอบฉบับเต็ม (PDF/Image):</label>
+          <input type="file" id="rep-file-input" name="report_file">
+        </div>
+        <div class="form-group">
+          <label for="rep-status-input">ขั้นตอนจัดส่ง:</label>
+          <select id="rep-status-input">
+            <option value="Draft">บันทึกร่างสัญญาก่อน (Draft)</option>
+            <option value="Submitted">ส่งอย่างเป็นทางการทันที (Submitted)</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-create-monthly-report').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-success">บันทึก / ส่งรายงาน</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- 6. Dashboard Executive Summary Report (Print-only A4) -->
+  <div class="a4-sheet print-only" id="dashboard-summary-report-sheet" style="background-color: white; color: black; display: none;">
+    <!-- Header -->
+    <div class="report-print-header" style="text-align: center; margin-bottom: 2rem;">
+      <img src="/images/logo.png" alt="TOAT Sandbox Logo" style="height: 80px; margin-bottom: 1rem; display: block; margin-left: auto; margin-right: auto;">
+      <h1 style="font-size: 1.8rem; margin: 0.5rem 0; font-weight: bold; color: #111;">เอกสารรายงาน TOAT Sandbox</h1>
+      <h3 id="print-report-cycle-lbl" style="font-size: 1.2rem; color: #444; margin: 0.25rem 0;">รายงานประจำเดือน...</h3>
+      <p id="print-report-date-lbl" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">ดาวน์โหลดเมื่อวันที่...</p>
+    </div>
+
+    <hr style="border: 0; border-top: 2px solid #333; margin-bottom: 1.5rem;">
+
+    <!-- Section 1: Metrics -->
+    <div class="report-print-section" style="margin-bottom: 2rem;">
+      <h2 style="font-size: 1.2rem; border-bottom: 2px solid #333; padding-bottom: 0.4rem; margin-bottom: 1rem;"><i class="fa-solid fa-chart-line"></i> 1. ดัชนีความคืบหน้าภาพรวม (Overall Progress Index)</h2>
+      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: center;">
+        <div style="text-align: center; border: 2px solid #ddd; padding: 1.5rem; border-radius: 8px;">
+          <span id="print-overall-progress-text" style="font-size: 2.5rem; font-weight: bold; color: #1a73e8; display: block;">0%</span>
+          <span style="font-size: 0.9rem; color: #555;">ความสำเร็จเฉลี่ยทุกโครงการ</span>
+        </div>
+        <div style="font-size: 0.95rem; line-height: 1.8;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 0.3rem 0;">
+            <span>งบประมาณจัดสรรรวมทั้งหมด:</span> <strong id="print-total-allocated-lbl">฿0.00</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 0.3rem 0;">
+            <span>งบประมาณเบิกจ่ายจริงทั้งหมด:</span> <strong id="print-total-spent-lbl" style="color: #d93025;">฿0.00</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 0.3rem 0;">
+            <span>งบประมาณคงเหลือสะสมทั้งหมด:</span> <strong id="print-total-remaining-lbl" style="color: #188038;">฿0.00</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+            <span>จำนวนโครงการที่อยู่ระหว่างติดตาม:</span> <strong><span id="print-total-projects-count">0</span> โครงการ</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Executive Submission Report -->
+    <div class="report-print-section" style="margin-bottom: 2rem;">
+      <h2 style="font-size: 1.2rem; border-bottom: 2px solid #333; padding-bottom: 0.4rem; margin-bottom: 1rem;"><i class="fa-solid fa-file-invoice"></i> 2. สรุปสถานะการส่งรายงานประจำรอบเดือนของผู้รับผิดชอบโครงการ</h2>
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
+        <thead>
+          <tr style="background-color: #f1f3f4; border-bottom: 2px solid #ccc;">
+            <th style="padding: 0.6rem; border: 1px solid #ddd;">ชื่อโครงการ</th>
+            <th style="padding: 0.6rem; border: 1px solid #ddd;">กลุ่มโครงการ</th>
+            <th style="padding: 0.6rem; border: 1px solid #ddd;">ความคืบหน้า</th>
+            <th style="padding: 0.6rem; border: 1px solid #ddd;">สถานะรายงาน</th>
+          </tr>
+        </thead>
+        <tbody id="print-report-status-table-body">
+          <!-- Dynamic rows -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 3: Grouped Projects Detail -->
+    <div class="report-print-section">
+      <h2 style="font-size: 1.2rem; border-bottom: 2px solid #333; padding-bottom: 0.4rem; margin-bottom: 1rem;"><i class="fa-solid fa-folder-open"></i> 3. สรุปรายละเอียดรายชื่อโครงการแยกตามกลุ่มโครงการ</h2>
+      <div id="print-grouped-projects-container" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Dynamic content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

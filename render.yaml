@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: toat-sandbox-tracker
+    env: node
+    plan: free # 100% Free plan
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false # Input your Turso DB URL (e.g., libsql://your-db-name.turso.io)
+      - key: TURSO_AUTH_TOKEN
+        sync: false # Input your Turso Auth Token
