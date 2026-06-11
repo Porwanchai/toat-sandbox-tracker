@@ -100,7 +100,7 @@ async function initDatabase() {
       position TEXT,
       division TEXT,
       department TEXT,
-      type TEXT CHECK(type IN ('Sponsor', 'Advisor')) NOT NULL,
+      type TEXT CHECK(type IN ('Sponsor', 'Advisor', 'สปอนเซอร์โครงการ', 'ที่ปรึกษาโครงการ')) NOT NULL,
       FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
     )`);
 

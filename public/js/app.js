@@ -1660,8 +1660,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         stakeholders.forEach(s => {
           const tr = document.createElement('tr');
-          const typeBadge = s.type === 'Sponsor' ? 'approved' : 'in-progress';
-          const typeText = s.type === 'Sponsor' ? 'สปอนเซอร์โครงการ' : 'ที่ปรึกษาโครงการ';
+          const isSponsor = s.type === 'Sponsor' || s.type === 'สปอนเซอร์โครงการ' || (s.type && s.type.toLowerCase() === 'sponsor');
+          const typeBadge = isSponsor ? 'approved' : 'in-progress';
+          const typeText = isSponsor ? 'สปอนเซอร์โครงการ' : 'ที่ปรึกษาโครงการ';
           tr.innerHTML = `
             <td>${s.employee_id || '-'}</td>
             <td>${s.full_name}</td>
@@ -1714,7 +1715,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('stk-position-input').value = btn.getAttribute('data-position');
             document.getElementById('stk-division-input').value = btn.getAttribute('data-division');
             document.getElementById('stk-dept-input').value = btn.getAttribute('data-dept');
-            document.getElementById('stk-type-input').value = btn.getAttribute('data-type');
+            let typeVal = btn.getAttribute('data-type') || '';
+            if (typeVal === 'สปอนเซอร์โครงการ' || typeVal.toLowerCase() === 'sponsor') {
+              typeVal = 'Sponsor';
+            } else if (typeVal === 'ที่ปรึกษาโครงการ' || typeVal.toLowerCase() === 'advisor') {
+              typeVal = 'Advisor';
+            }
+            document.getElementById('stk-type-input').value = typeVal;
             elements.modalAddStakeholder.showModal();
           });
         });
