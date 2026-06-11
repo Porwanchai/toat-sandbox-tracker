@@ -517,6 +517,7 @@ app.get('/api/projects/:id/stakeholders', requireLogin, async (req, res) => {
 app.post('/api/projects/:id/stakeholders', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
+  const { employee_id, full_name, position, division, department, type } = req.body;
   const employee_id_val = employee_id || '';
   const position_val = position || '';
   const division_val = division || '';
@@ -560,6 +561,7 @@ app.put('/api/projects/:id/stakeholders/:stakeholderId', requireLogin, requireRo
   const projectId = req.params.id;
   const stakeholderId = req.params.stakeholderId;
   const { id: userId, role } = req.session.user;
+  const { employee_id, full_name, position, division, department, type } = req.body;
   const employee_id_val = employee_id || '';
   const position_val = position || '';
   const division_val = division || '';
