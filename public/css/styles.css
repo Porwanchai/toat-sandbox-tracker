@@ -971,8 +971,8 @@ body {
 }
 
 .team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
 }
 
@@ -1694,9 +1694,6 @@ dialog form {
     grid-template-columns: 1fr;
   }
 
-  .team-grid {
-    grid-template-columns: 1fr;
-  }
 
   .admin-grid {
     grid-template-columns: 1fr;
