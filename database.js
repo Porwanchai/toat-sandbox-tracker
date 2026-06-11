@@ -384,5 +384,7 @@ module.exports = {
   dbRun,
   dbGet,
   dbAll,
-  initDatabase
+  initDatabase,
+  isUsingTurso,
+  dbUrl
 };

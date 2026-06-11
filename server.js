@@ -90,6 +90,16 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// Debug Database Connection Status
+app.get('/api/debug/db-status', (req, res) => {
+  res.json({
+    isUsingTurso: dbModule.isUsingTurso,
+    dbUrl: dbModule.dbUrl,
+    hasUrlEnv: !!process.env.TURSO_DATABASE_URL,
+    hasTokenEnv: !!process.env.TURSO_AUTH_TOKEN
+  });
+});
+
 // Login
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
