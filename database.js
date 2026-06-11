@@ -28,9 +28,25 @@ const client = createClient({
   authToken: dbToken
 });
 
+const sanitizeParams = (params) => {
+  if (Array.isArray(params)) {
+    return params.map(p => p === undefined ? null : p);
+  } else if (params && typeof params === 'object') {
+    const clean = {};
+    for (const key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        clean[key] = params[key] === undefined ? null : params[key];
+      }
+    }
+    return clean;
+  }
+  return params;
+};
+
 // Helper functions wrapping libsql client for clean async/await code
 const dbRun = async (sql, params = []) => {
-  const result = await client.execute({ sql, args: params });
+  const cleanParams = sanitizeParams(params);
+  const result = await client.execute({ sql, args: cleanParams });
   return {
     lastID: result.lastInsertRowid ? Number(result.lastInsertRowid) : undefined,
     changes: result.rowsAffected
@@ -38,12 +54,14 @@ const dbRun = async (sql, params = []) => {
 };
 
 const dbGet = async (sql, params = []) => {
-  const result = await client.execute({ sql, args: params });
+  const cleanParams = sanitizeParams(params);
+  const result = await client.execute({ sql, args: cleanParams });
   return result.rows[0];
 };
 
 const dbAll = async (sql, params = []) => {
-  const result = await client.execute({ sql, args: params });
+  const cleanParams = sanitizeParams(params);
+  const result = await client.execute({ sql, args: cleanParams });
   return result.rows;
 };
 

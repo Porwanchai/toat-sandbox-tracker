@@ -422,6 +422,12 @@ app.post('/api/projects/:id/members', requireLogin, requireRole(['Admin', 'Proje
   const { employee_id, full_name, nickname, position, division, department } = req.body;
   const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
 
+  const employee_id_val = employee_id || '';
+  const nickname_val = nickname || '';
+  const position_val = position || '';
+  const division_val = division || '';
+  const department_val = department || '';
+
   if (!full_name) return res.status(400).json({ error: 'Full name is required' });
 
   try {
@@ -430,7 +436,7 @@ app.post('/api/projects/:id/members', requireLogin, requireRole(['Admin', 'Proje
 
     await dbRun(
       'INSERT INTO project_members (project_id, employee_id, full_name, nickname, position, division, department, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [projectId, employee_id, full_name, nickname, position, division, department, photo_path]
+      [projectId, employee_id_val, full_name, nickname_val, position_val, division_val, department_val, photo_path]
     );
     res.status(201).json({ message: 'Member added successfully' });
   } catch (error) {
@@ -463,6 +469,12 @@ app.put('/api/projects/:id/members/:memberId', requireLogin, requireRole(['Admin
   const { employee_id, full_name, nickname, position, division, department } = req.body;
   const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
 
+  const employee_id_val = employee_id || '';
+  const nickname_val = nickname || '';
+  const position_val = position || '';
+  const division_val = division || '';
+  const department_val = department || '';
+
   if (!full_name) return res.status(400).json({ error: 'Full name is required' });
 
   try {
@@ -472,12 +484,12 @@ app.put('/api/projects/:id/members/:memberId', requireLogin, requireRole(['Admin
     if (photo_path) {
       await dbRun(
         'UPDATE project_members SET employee_id = ?, full_name = ?, nickname = ?, position = ?, division = ?, department = ?, photo_path = ? WHERE id = ? AND project_id = ?',
-        [employee_id, full_name, nickname, position, division, department, photo_path, memberId, projectId]
+        [employee_id_val, full_name, nickname_val, position_val, division_val, department_val, photo_path, memberId, projectId]
       );
     } else {
       await dbRun(
         'UPDATE project_members SET employee_id = ?, full_name = ?, nickname = ?, position = ?, division = ?, department = ? WHERE id = ? AND project_id = ?',
-        [employee_id, full_name, nickname, position, division, department, memberId, projectId]
+        [employee_id_val, full_name, nickname_val, position_val, division_val, department_val, memberId, projectId]
       );
     }
     res.json({ message: 'Member updated successfully' });
@@ -505,7 +517,10 @@ app.get('/api/projects/:id/stakeholders', requireLogin, async (req, res) => {
 app.post('/api/projects/:id/stakeholders', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
-  const { employee_id, full_name, position, division, department, type } = req.body;
+  const employee_id_val = employee_id || '';
+  const position_val = position || '';
+  const division_val = division || '';
+  const department_val = department || '';
 
   if (!full_name || !type) return res.status(400).json({ error: 'Full name and type are required' });
 
@@ -515,7 +530,7 @@ app.post('/api/projects/:id/stakeholders', requireLogin, requireRole(['Admin', '
 
     await dbRun(
       'INSERT INTO project_stakeholders (project_id, employee_id, full_name, position, division, department, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [projectId, employee_id, full_name, position, division, department, type]
+      [projectId, employee_id_val, full_name, position_val, division_val, department_val, type]
     );
     res.status(201).json({ message: 'Stakeholder added successfully' });
   } catch (error) {
@@ -545,7 +560,10 @@ app.put('/api/projects/:id/stakeholders/:stakeholderId', requireLogin, requireRo
   const projectId = req.params.id;
   const stakeholderId = req.params.stakeholderId;
   const { id: userId, role } = req.session.user;
-  const { employee_id, full_name, position, division, department, type } = req.body;
+  const employee_id_val = employee_id || '';
+  const position_val = position || '';
+  const division_val = division || '';
+  const department_val = department || '';
 
   if (!full_name || !type) return res.status(400).json({ error: 'Full name and type are required' });
 
@@ -555,7 +573,7 @@ app.put('/api/projects/:id/stakeholders/:stakeholderId', requireLogin, requireRo
 
     await dbRun(
       'UPDATE project_stakeholders SET employee_id = ?, full_name = ?, position = ?, division = ?, department = ?, type = ? WHERE id = ? AND project_id = ?',
-      [employee_id, full_name, position, division, department, type, stakeholderId, projectId]
+      [employee_id_val, full_name, position_val, division_val, department_val, type, stakeholderId, projectId]
     );
     res.json({ message: 'Stakeholder updated successfully' });
   } catch (error) {
