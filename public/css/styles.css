@@ -232,6 +232,60 @@ body {
   color: #065f46;
 }
 
+.badge.suspended {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge.hidden-status {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.project-card.is-hidden {
+  opacity: 0.6;
+  filter: grayscale(20%);
+  border: 1px dashed var(--text-muted);
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.btn-icon:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary);
+}
+
+.btn-icon.active {
+  color: var(--warning);
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.delete-proj-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger) !important;
+}
+
 /* ==========================================================================
    AUTHENTICATION OVERLAY
    ========================================================================== */
@@ -1966,4 +2020,132 @@ dialog form {
 
 .scroll-gantt-btn i {
   font-size: 1.1rem;
+}
+
+/* ==========================================================================
+   ROUND 14: PROJECT DETAILS & LOGO STYLING
+   ========================================================================== */
+
+#modal-create-project {
+  max-width: 700px;
+}
+
+/* Project Card Logo styling */
+.project-card-logo-container {
+  display: flex;
+  align-items: center;
+}
+
+/* Workspace Brand area */
+.workspace-brand-area {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.workspace-logo-container {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--text-white);
+  border: 1px solid var(--border-card);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.workspace-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-logo-placeholder {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+/* Workspace Details Grid */
+.workspace-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.detail-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  box-shadow: var(--box-shadow);
+}
+
+.detail-card strong {
+  display: block;
+  font-size: 0.825rem;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-card strong i {
+  margin-right: 5px;
+  width: 16px;
+  text-align: center;
+}
+
+.detail-card p {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* ==========================================================================
+   ROUND 15: USER PROFILE & PASSWORD TAB STYLING
+   ========================================================================== */
+
+#modal-edit-profile {
+  max-width: 600px;
+}
+
+.avatar-edit-overlay {
+  transition: var(--transition);
+}
+
+.user-profile:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.user-profile:hover .avatar-edit-overlay {
+  background-color: var(--primary-hover);
+  transform: scale(1.1);
+}
+
+.profile-tab-btn {
+  transition: var(--transition);
+}
+
+.profile-tab-btn:hover {
+  color: var(--primary) !important;
+  background-color: rgba(37, 99, 235, 0.03) !important;
+}
+
+.profile-tab-btn.active {
+  border-bottom-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }

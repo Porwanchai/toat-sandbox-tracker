@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Project Cards
     projectCardsContainer: document.getElementById('project-cards-container'),
     openCreateProjectModalBtn: document.getElementById('open-create-project-modal-btn'),
+    showHiddenProjectsChk: document.getElementById('show-hidden-projects-chk'),
     
     // Workspace View
     wsProjectName: document.getElementById('ws-project-name'),
@@ -156,6 +157,65 @@ document.addEventListener('DOMContentLoaded', () => {
     modalCreateMonthlyReport: document.getElementById('modal-create-monthly-report'),
     formCreateMonthlyReport: document.getElementById('form-create-monthly-report')
   };
+
+  // ----------------------------------------------------
+  // IDLE TIMEOUT MONITOR (5 minutes)
+  // ----------------------------------------------------
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  let idleTimer = null;
+  let lastResetTime = 0;
+
+  function resetIdleTimer() {
+    const now = Date.now();
+    // Throttle checks to once per second to reduce CPU usage on mouse move events
+    if (now - lastResetTime < 1000) {
+      return;
+    }
+    lastResetTime = now;
+
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
+    if (state.currentUser) {
+      idleTimer = setTimeout(handleIdleTimeout, IDLE_TIMEOUT_MS);
+    }
+  }
+
+  async function handleIdleTimeout() {
+    if (!state.currentUser) return;
+    
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+
+    // 1. Immediately clear user state and hide application container
+    // to prevent sensitive info leaks while the alert dialog is blocking execution
+    state.currentUser = null;
+    state.historyStack = [];
+
+    elements.authContainer.classList.remove('hidden');
+    elements.appContainer.classList.add('hidden');
+    elements.loginForm.classList.remove('hidden');
+    elements.registerForm.classList.add('hidden');
+    elements.forgotForm.classList.add('hidden');
+
+    // 2. Alert the user (blocking alert)
+    alert('หมดเวลาเข้าระบบเนื่องจากไม่มีการเคลื่อนไหวเกิน 5 นาที กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+    
+    // 3. Clear session on backend server
+    try {
+      await API.auth.logout();
+    } catch (err) {
+      console.error('Logout failed during idle timeout:', err);
+    }
+  }
+
+  // Setup activity listeners
+  const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+  activityEvents.forEach(evt => {
+    window.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
 
   // Helper: Format Currency
   function formatTHB(amount) {
@@ -335,6 +395,21 @@ document.addEventListener('DOMContentLoaded', () => {
       // Setup role badge classes
       elements.displayRole.className = `user-role badge ${state.currentUser.role.toLowerCase().replace(' ', '-')}`;
 
+      // Render user avatar in sidebar
+      const sidebarAvatar = document.getElementById('sidebar-user-avatar');
+      const sidebarAvatarPlaceholder = document.getElementById('sidebar-user-avatar-placeholder');
+      if (sidebarAvatar && sidebarAvatarPlaceholder) {
+        if (state.currentUser.photo_path) {
+          sidebarAvatar.src = state.currentUser.photo_path + '?t=' + new Date().getTime();
+          sidebarAvatar.classList.remove('hidden');
+          sidebarAvatarPlaceholder.classList.add('hidden');
+        } else {
+          sidebarAvatar.src = '';
+          sidebarAvatar.classList.add('hidden');
+          sidebarAvatarPlaceholder.classList.remove('hidden');
+        }
+      }
+
       // Parse allowed views list
       const allowedViews = (state.currentUser.allowed_views || '').split(',').map(v => v.trim());
       elements.navLinks.forEach(link => {
@@ -362,7 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.appContainer.classList.remove('hidden');
       showView('dashboard');
       loadNotifications();
+      resetIdleTimer();
     } catch (err) {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
       // Show login page
       elements.authContainer.classList.remove('hidden');
       elements.appContainer.classList.add('hidden');
@@ -431,6 +511,10 @@ document.addEventListener('DOMContentLoaded', () => {
       await API.auth.logout();
       state.currentUser = null;
       state.historyStack = [];
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
       checkAuth();
     } catch (err) {
       alert(err.message);
@@ -1104,7 +1188,8 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.kpiStatusCompleted.textContent = stats.status['Completed'] || 0;
 
       // 2. Load Projects Progress Table
-      const projects = await API.projects.list();
+      let projects = await API.projects.list();
+      projects = projects.filter(p => !p.is_hidden);
       state.projects = projects;
       state.lastStats = stats; // Save for report generator
       
@@ -1313,9 +1398,16 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           const progress = Math.round(p.overall_progress || 0);
+          const logoHtml = p.logo_path 
+            ? `<img src="${p.logo_path}" alt="Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">`
+            : `<div style="width: 24px; height: 24px; border-radius: 4px; background: rgba(37,99,235,0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;"><i class="fa-solid fa-rocket"></i></div>`;
+
           card.innerHTML = `
-            <div style="font-weight: bold; font-size: 0.9rem; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.project_name}">
-              ${p.project_name}
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 0.4rem; min-width: 0;">
+              ${logoHtml}
+              <div style="font-weight: bold; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;" title="${p.project_name}">
+                ${p.project_name}
+              </div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
               <span class="badge ${p.status.toLowerCase().replace(' ', '-')}" style="font-size: 0.7rem; padding: 0.1rem 0.4rem;">${p.status}</span>
@@ -1435,21 +1527,62 @@ document.addEventListener('DOMContentLoaded', () => {
       const projects = await API.projects.list();
       elements.projectCardsContainer.innerHTML = '';
 
-      if (projects.length === 0) {
+      const showHidden = elements.showHiddenProjectsChk ? elements.showHiddenProjectsChk.checked : false;
+      const filteredProjects = projects.filter(p => showHidden || !p.is_hidden);
+
+      if (filteredProjects.length === 0) {
         elements.projectCardsContainer.innerHTML = '<div class="text-center" style="grid-column: 1/-1;">ไม่มีข้อมูลโครงการ</div>';
         return;
       }
 
-      projects.forEach(p => {
+      filteredProjects.forEach(p => {
         const card = document.createElement('div');
-        card.className = 'project-card glassmorphism';
+        card.className = 'project-card glassmorphism' + (p.is_hidden ? ' is-hidden' : '');
         const progress = Math.round(p.overall_progress);
-        const statusClass = p.status.toLowerCase().replace(' ', '-');
+        
+        let statusBadgeText = p.status;
+        let statusClass = p.status.toLowerCase().replace(' ', '-');
+        if (p.is_suspended) {
+          statusBadgeText = 'พักการดำเนินการ';
+          statusClass = 'suspended';
+        } else {
+          const statusTrans = { 'Not Started': 'ยังไม่เริ่ม', 'In Progress': 'กำลังดำเนินการ', 'Delayed': 'ล่าช้า', 'Completed': 'เสร็จสิ้น' };
+          statusBadgeText = statusTrans[p.status] || p.status;
+        }
+
+        const canManage = p.can_edit === 1 || state.currentUser.role === 'Admin';
+        const isAdmin = state.currentUser.role === 'Admin';
+
+        const logoHtml = p.logo_path 
+          ? `<img src="${p.logo_path}" alt="Logo" class="project-card-logo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-card); flex-shrink: 0;">`
+          : `<div class="project-card-logo-placeholder" style="width: 48px; height: 48px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; border: 1px solid var(--border-card); flex-shrink: 0;"><i class="fa-solid fa-rocket"></i></div>`;
 
         card.innerHTML = `
           <div class="project-card-header">
-            <h3>${p.project_name}</h3>
-            <span class="badge ${statusClass}">${p.status}</span>
+            <div style="display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0;">
+              ${logoHtml}
+              <div style="min-width: 0; flex: 1;">
+                <h3 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.project_name}">${p.project_name}</h3>
+                <div style="display:flex; gap:0.25rem; margin-top:0.25rem; flex-wrap:wrap;">
+                  <span class="badge ${statusClass}">${statusBadgeText}</span>
+                  ${p.is_hidden ? `<span class="badge hidden-status"><i class="fa-solid fa-eye-slash"></i> ซ่อนอยู่</span>` : ''}
+                </div>
+              </div>
+            </div>
+            ${canManage ? `
+              <div class="project-card-actions">
+                <button class="btn-icon edit-proj-btn" data-id="${p.id}" title="แก้ไขโครงการ"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="btn-icon suspend-proj-btn ${p.is_suspended ? 'active' : ''}" data-id="${p.id}" title="${p.is_suspended ? 'เปิดดำเนินการต่อ' : 'พักการดำเนินการ'}">
+                  <i class="fa-solid ${p.is_suspended ? 'fa-play' : 'fa-pause'}"></i>
+                </button>
+                <button class="btn-icon hide-proj-btn ${p.is_hidden ? 'active' : ''}" data-id="${p.id}" title="${p.is_hidden ? 'แสดงโครงการ' : 'ปิดตา/ซ่อนโครงการ'}">
+                  <i class="fa-solid ${p.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                </button>
+                ${isAdmin ? `
+                  <button class="btn-icon delete-proj-btn" data-id="${p.id}" title="ลบโครงการ"><i class="fa-solid fa-trash-can"></i></button>
+                ` : ''}
+              </div>
+            ` : ''}
           </div>
           <p class="project-card-desc">${p.description || 'ไม่มีคำอธิบายโครงการ'}</p>
           
@@ -1485,9 +1618,89 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+      // Bind edit triggers
+      document.querySelectorAll('.project-card .edit-proj-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const pid = btn.getAttribute('data-id');
+          try {
+            const p = await API.projects.get(pid);
+            document.getElementById('edit-project-id').value = p.id;
+            document.getElementById('proj-name-input').value = p.project_name;
+            document.getElementById('proj-desc-input').value = p.description || '';
+            document.getElementById('proj-objectives-input').value = p.objectives || '';
+            document.getElementById('proj-scope-input').value = p.scope || '';
+            document.getElementById('proj-targets-input').value = p.targets || '';
+            document.getElementById('proj-strategic-input').value = p.strategic_alignment || '';
+            document.getElementById('proj-values-input').value = p.values_alignment || '';
+            document.getElementById('proj-status-input').value = p.status;
+            document.getElementById('proj-group-input').value = p.project_group || 'โครงการ TOAT Sandbox';
+            document.getElementById('proj-logo-input').value = ''; // Reset file input
+            elements.modalCreateProject.showModal();
+          } catch (err) {
+            alert('ไม่สามารถโหลดข้อมูลโครงการได้: ' + err.message);
+          }
+        });
+      });
+
+      // Bind suspend triggers
+      document.querySelectorAll('.project-card .suspend-proj-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const pid = btn.getAttribute('data-id');
+          try {
+            await API.projects.toggleSuspend(pid);
+            loadProjectsListData();
+          } catch (err) {
+            alert('เกิดข้อผิดพลาด: ' + err.message);
+          }
+        });
+      });
+
+      // Bind hide triggers
+      document.querySelectorAll('.project-card .hide-proj-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const pid = btn.getAttribute('data-id');
+          try {
+            await API.projects.toggleHide(pid);
+            loadProjectsListData();
+          } catch (err) {
+            alert('เกิดข้อผิดพลาด: ' + err.message);
+          }
+        });
+      });
+
+      // Bind delete triggers
+      document.querySelectorAll('.project-card .delete-proj-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const pid = btn.getAttribute('data-id');
+          if (confirm('คุณแน่ใจหรือไม่ที่จะลบโครงการนี้? การลบโครงการจะลบข้อมูลที่เกี่ยวข้องทั้งหมด เช่น สมาชิก งบประมาณ และแผนงาน Gantt')) {
+            try {
+              await API.projects.delete(pid);
+              alert('ลบโครงการเรียบร้อยแล้ว');
+              loadProjectsListData();
+              if (state.currentUser.role === 'Admin') {
+                loadAdminPanelData();
+              }
+            } catch (err) {
+              alert('เกิดข้อผิดพลาด: ' + err.message);
+            }
+          }
+        });
+      });
+
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการโหลดรายการโครงการ: ' + err.message);
     }
+  }
+
+  // Bind change event to showHiddenProjectsChk if it exists
+  if (elements.showHiddenProjectsChk) {
+    elements.showHiddenProjectsChk.addEventListener('change', () => {
+      loadProjectsListData();
+    });
   }
 
   // Create Project Modal controls
@@ -1512,8 +1725,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('edit-project-id').value = p.id;
       document.getElementById('proj-name-input').value = p.project_name;
       document.getElementById('proj-desc-input').value = p.description || '';
+      document.getElementById('proj-objectives-input').value = p.objectives || '';
+      document.getElementById('proj-scope-input').value = p.scope || '';
+      document.getElementById('proj-targets-input').value = p.targets || '';
+      document.getElementById('proj-strategic-input').value = p.strategic_alignment || '';
+      document.getElementById('proj-values-input').value = p.values_alignment || '';
       document.getElementById('proj-status-input').value = p.status;
       document.getElementById('proj-group-input').value = p.project_group || 'โครงการ TOAT Sandbox';
+      document.getElementById('proj-logo-input').value = ''; // Reset file input
       
       elements.modalCreateProject.showModal();
     } catch (err) {
@@ -1526,18 +1745,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const pid = document.getElementById('edit-project-id').value;
     const name = document.getElementById('proj-name-input').value;
     const desc = document.getElementById('proj-desc-input').value;
+    const objectives = document.getElementById('proj-objectives-input').value;
+    const scope = document.getElementById('proj-scope-input').value;
+    const targets = document.getElementById('proj-targets-input').value;
+    const strategic = document.getElementById('proj-strategic-input').value;
+    const values = document.getElementById('proj-values-input').value;
     const status = document.getElementById('proj-status-input').value;
     const project_group = document.getElementById('proj-group-input').value;
+    const logoFile = document.getElementById('proj-logo-input').files[0];
+
+    const formData = new FormData();
+    formData.append('project_name', name);
+    formData.append('description', desc);
+    formData.append('objectives', objectives);
+    formData.append('scope', scope);
+    formData.append('targets', targets);
+    formData.append('strategic_alignment', strategic);
+    formData.append('values_alignment', values);
+    formData.append('status', status);
+    formData.append('project_group', project_group);
+    if (logoFile) {
+      formData.append('logo', logoFile);
+    }
 
     try {
       if (pid) {
-        await API.projects.update(pid, { project_name: name, description: desc, status, project_group });
+        await API.projects.update(pid, formData);
         alert('อัปเดตข้อมูลโครงการสำเร็จแล้ว');
         if (state.activeProjectId == pid) {
           loadWorkspaceData();
         }
       } else {
-        await API.projects.create({ project_name: name, description: desc, status, project_group });
+        await API.projects.create(formData);
         alert('สร้างโครงการใหม่สำเร็จแล้ว');
       }
       elements.modalCreateProject.close();
@@ -1574,7 +1813,41 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. Get Project Detail
       const p = await API.projects.get(pid);
       elements.wsProjectName.textContent = p.project_name;
-      elements.wsProjectDesc.textContent = p.description || 'ไม่มีคำอธิบายโครงการ';
+      
+      // Update logo display
+      const wsLogo = document.getElementById('ws-project-logo');
+      const wsLogoPlaceholder = document.getElementById('ws-project-logo-placeholder');
+      if (wsLogo && wsLogoPlaceholder) {
+        if (p.logo_path) {
+          wsLogo.src = p.logo_path;
+          wsLogo.classList.remove('hidden');
+          wsLogoPlaceholder.classList.add('hidden');
+        } else {
+          wsLogo.classList.add('hidden');
+          wsLogoPlaceholder.classList.remove('hidden');
+        }
+      }
+
+      // Update group badge
+      const wsGroupBadge = document.getElementById('ws-project-group-badge');
+      if (wsGroupBadge) {
+        wsGroupBadge.textContent = p.project_group || 'โครงการ TOAT Sandbox';
+      }
+
+      // Update 6 details fields
+      const descEl = document.getElementById('ws-project-desc');
+      const objEl = document.getElementById('ws-project-objectives');
+      const scopeEl = document.getElementById('ws-project-scope');
+      const targetsEl = document.getElementById('ws-project-targets');
+      const strategicEl = document.getElementById('ws-project-strategic');
+      const valuesEl = document.getElementById('ws-project-values');
+
+      if (descEl) descEl.textContent = p.description || 'ไม่มีรายละเอียดโครงการ';
+      if (objEl) objEl.textContent = p.objectives || 'ไม่มีข้อมูลวัตถุประสงค์';
+      if (scopeEl) scopeEl.textContent = p.scope || 'ไม่มีข้อมูลขอบเขต';
+      if (targetsEl) targetsEl.textContent = p.targets || 'ไม่มีข้อมูลเป้าหมาย';
+      if (strategicEl) strategicEl.textContent = p.strategic_alignment || 'ไม่มีข้อมูลยุทธศาสตร์องค์กร';
+      if (valuesEl) valuesEl.textContent = p.values_alignment || 'ไม่มีข้อมูลค่านิยม TOAT';
       
       const statusClass = p.status.toLowerCase().replace(' ', '-');
       elements.wsProjectStatus.className = `workspace-project-status badge ${statusClass}`;
@@ -2027,49 +2300,135 @@ document.addEventListener('DOMContentLoaded', () => {
       const tasks = await API.gantt.list(pid);
       state.tasks = tasks;
 
+      // Populate datalist for main task autocomplete
+      const datalist = document.getElementById('gantt-main-tasks-list');
+      if (datalist) {
+        datalist.innerHTML = '';
+        const uniqueMains = [...new Set(tasks.map(tk => tk.main_task))].filter(Boolean);
+        uniqueMains.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          datalist.appendChild(opt);
+        });
+      }
+
       // 1. Draw Gantt Chart Visual Timeline
       renderGanttChartVisual(tasks);
 
       // 2. Draw Gantt Tasks Table
       elements.wsGanttTableBody.innerHTML = '';
       if (tasks.length === 0) {
-        elements.wsGanttTableBody.innerHTML = '<tr><td colspan="8" class="text-center">ยังไม่มีแผนดำเนินงานสำหรับโครงการนี้</td></tr>';
+        elements.wsGanttTableBody.innerHTML = '<tr><td colspan="9" class="text-center">ยังไม่มีแผนดำเนินงานสำหรับโครงการนี้</td></tr>';
       } else {
+        // Group tasks by main_task
+        const groups = {};
         tasks.forEach(t => {
-          const tr = document.createElement('tr');
-          let attachmentHTML = '<span class="text-muted" style="font-size:0.75rem;">ไม่มีเอกสาร</span>';
-          if (t.attachments && t.attachments.length > 0) {
-            attachmentHTML = t.attachments.map(att => 
-              `<a href="${att.url}" target="_blank" class="badge badge-submitted margin-top-xs" style="display:block;"><i class="fa-solid fa-file-lines"></i> ${att.name}</a>`
-            ).join('');
+          if (!groups[t.main_task]) {
+            groups[t.main_task] = [];
           }
+          groups[t.main_task].push(t);
+        });
 
-          tr.innerHTML = `
-            <td><strong>${t.main_task}</strong></td>
-            <td>${t.sub_task || '-'}</td>
-            <td>${t.assignee_name || '-'}</td>
-            <td>${t.start_date}</td>
-            <td>${t.end_date}</td>
+        // Loop through groups
+        Object.keys(groups).forEach(mainTaskName => {
+          const groupTasks = groups[mainTaskName];
+
+          // Compute summary info
+          let minStart = null;
+          let maxEnd = null;
+          let totalProgress = 0;
+          let subTaskCount = 0;
+          let maxLastUpdated = null;
+
+          groupTasks.forEach(t => {
+            if (t.start_date) {
+              const start = new Date(t.start_date);
+              if (!minStart || start < minStart) minStart = start;
+            }
+            if (t.end_date) {
+              const end = new Date(t.end_date);
+              if (!maxEnd || end > maxEnd) maxEnd = end;
+            }
+            if (t.last_updated) {
+              const updated = new Date(t.last_updated);
+              if (!maxLastUpdated || updated > maxLastUpdated) maxLastUpdated = updated;
+            }
+            if (t.sub_task && t.sub_task.trim() !== '') {
+              totalProgress += t.progress_percent || 0;
+              subTaskCount++;
+            }
+          });
+
+          const avgProgress = subTaskCount > 0 ? Math.round(totalProgress / subTaskCount) : (groupTasks[0].progress_percent || 0);
+          const minStartDateStr = minStart ? minStart.toISOString().split('T')[0] : (groupTasks[0].start_date || '-');
+          const maxEndDateStr = maxEnd ? maxEnd.toISOString().split('T')[0] : (groupTasks[0].end_date || '-');
+          const lastUpdatedStr = maxLastUpdated ? maxLastUpdated : groupTasks[0].last_updated;
+
+          // Render Main Task Group Header Row
+          const headerTr = document.createElement('tr');
+          headerTr.style.backgroundColor = 'rgba(241, 245, 249, 0.6)';
+          headerTr.style.fontWeight = 'bold';
+          headerTr.innerHTML = `
+            <td><span style="color: var(--primary);"><i class="fa-solid fa-folder-open"></i> ${mainTaskName}</span></td>
+            <td><span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(กิจกรรมหลัก - มี ${groupTasks.filter(t => t.sub_task && t.sub_task.trim() !== '').length} กิจกรรมย่อย)</span></td>
+            <td>-</td>
+            <td>${minStartDateStr}</td>
+            <td>${maxEndDateStr}</td>
             <td>
               <div class="progress-container">
                 <div class="progress-bar-track" style="height:6px; width:70px;">
-                  <div class="progress-bar-fill" style="width: ${t.progress_percent}%;"></div>
+                  <div class="progress-bar-fill" style="width: ${avgProgress}%; background: var(--primary);"></div>
                 </div>
-                <strong>${t.progress_percent}%</strong>
+                <strong>${avgProgress}%</strong>
               </div>
             </td>
-            <td>${attachmentHTML}</td>
-            <td style="font-size:0.75rem; color:var(--text-muted);">${formatDate(t.last_updated)}</td>
-            <td>
-              ${canEdit ? `
-                <div style="display:flex; gap:0.25rem;">
-                  <button class="btn btn-secondary btn-xs edit-task-btn" data-id="${t.id}">แก้ไข</button>
-                  <button class="btn btn-danger btn-xs rm-task-btn" data-id="${t.id}"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-              ` : '-'}
-            </td>
+            <td>-</td>
+            <td style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${formatDate(lastUpdatedStr)}</td>
+            <td>-</td>
           `;
-          elements.wsGanttTableBody.appendChild(tr);
+          elements.wsGanttTableBody.appendChild(headerTr);
+
+          // Render each sub task in group
+          groupTasks.forEach(t => {
+            const tr = document.createElement('tr');
+            let attachmentHTML = '<span class="text-muted" style="font-size:0.75rem;">ไม่มีเอกสาร</span>';
+            if (t.attachments && t.attachments.length > 0) {
+              attachmentHTML = t.attachments.map(att => 
+                `<a href="${att.url}" target="_blank" class="badge badge-submitted margin-top-xs" style="display:block;"><i class="fa-solid fa-file-lines"></i> ${att.name}</a>`
+              ).join('');
+            }
+
+            const subTaskNameHTML = t.sub_task && t.sub_task.trim() !== ''
+              ? `<span style="padding-left: 15px;"><i class="fa-solid fa-arrow-turn-up" style="transform: rotate(90deg); margin-right: 5px; color: var(--text-muted);"></i> ${t.sub_task}</span>`
+              : `<span class="text-muted" style="padding-left: 15px; font-style: italic;">(ยังไม่มีกิจกรรมย่อย)</span>`;
+
+            tr.innerHTML = `
+              <td><span class="text-muted" style="font-size: 0.85rem; padding-left: 5px;">↳ ${t.main_task}</span></td>
+              <td>${subTaskNameHTML}</td>
+              <td>${t.assignee_name || '-'}</td>
+              <td>${t.start_date}</td>
+              <td>${t.end_date}</td>
+              <td>
+                <div class="progress-container">
+                  <div class="progress-bar-track" style="height:6px; width:70px;">
+                    <div class="progress-bar-fill" style="width: ${t.progress_percent}%;"></div>
+                  </div>
+                  <strong>${t.progress_percent}%</strong>
+                </div>
+              </td>
+              <td>${attachmentHTML}</td>
+              <td style="font-size:0.75rem; color:var(--text-muted);">${formatDate(t.last_updated)}</td>
+              <td>
+                ${canEdit ? `
+                  <div style="display:flex; gap:0.25rem;">
+                    <button class="btn btn-secondary btn-xs edit-task-btn" data-id="${t.id}">แก้ไข</button>
+                    <button class="btn btn-danger btn-xs rm-task-btn" data-id="${t.id}"><i class="fa-solid fa-trash-can"></i></button>
+                  </div>
+                ` : '-'}
+              </td>
+            `;
+            elements.wsGanttTableBody.appendChild(tr);
+          });
         });
 
         // Bind actions
@@ -2247,63 +2606,119 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.ganttTimelineHeader.appendChild(cell);
     }
 
-    // 2. Draw Rows
+    // Group tasks by main_task
+    const groups = {};
     tasks.forEach(t => {
-      const row = document.createElement('div');
-      row.className = 'gantt-row';
-
-      const taskStart = new Date(t.start_date).getTime();
-      const taskEnd = new Date(t.end_date).getTime();
-
-      // Calculate Left Position and Width ratios
-      let leftPercent = ((taskStart - minDate.getTime()) / totalMs) * 100;
-      let widthPercent = ((taskEnd - taskStart) / totalMs) * 100;
-
-      // Restrict overflows
-      if (leftPercent < 0) leftPercent = 0;
-      if (widthPercent <= 0) widthPercent = 5; // minimum thickness
-      if (leftPercent + widthPercent > 100) widthPercent = 100 - leftPercent;
-
-      // Render Task name cell
-      const nameCell = document.createElement('div');
-      nameCell.className = 'gantt-task-name';
-      nameCell.innerHTML = `${t.main_task} <span>${t.sub_task || ''}</span>`;
-      row.appendChild(nameCell);
-
-      // Render absolute bar container in the timeline
-      const timelineCell = document.createElement('div');
-      timelineCell.className = 'gantt-timeline-body-cell';
-      timelineCell.style.gridColumn = 'span 24';
-
-      // HTML bar decoration
-      const bar = document.createElement('div');
-      bar.className = 'gantt-bar';
-      bar.style.left = `${leftPercent}%`;
-      bar.style.width = `${widthPercent}%`;
-      bar.title = `${t.main_task} (${t.progress_percent}%) - ผู้รับผิดชอบ: ${t.assignee_name || 'ไม่มี'} - วันเริ่ม: ${t.start_date} วันสิ้นสุด: ${t.end_date}`;
-
-      bar.innerHTML = `
-        <div class="gantt-bar-progress-fill" style="width: ${t.progress_percent}%;"></div>
-        <span>${t.progress_percent}%</span>
-      `;
-
-      // Allow click trigger edit modal
-      if (state.currentUser.role !== 'Executive') {
-        bar.addEventListener('click', () => {
-          document.getElementById('gantt-task-id').value = t.id;
-          document.getElementById('gantt-main-input').value = t.main_task;
-          document.getElementById('gantt-sub-input').value = t.sub_task || '';
-          document.getElementById('gantt-start-input').value = t.start_date;
-          document.getElementById('gantt-end-input').value = t.end_date;
-          document.getElementById('gantt-progress-input').value = t.progress_percent;
-          document.getElementById('progress-val-lbl').innerText = t.progress_percent + '%';
-          elements.modalAddGanttTask.showModal();
-        });
+      if (!groups[t.main_task]) {
+        groups[t.main_task] = [];
       }
+      groups[t.main_task].push(t);
+    });
 
-      timelineCell.appendChild(bar);
-      row.appendChild(timelineCell);
-      elements.ganttChartRows.appendChild(row);
+    // 2. Draw Rows
+    Object.keys(groups).forEach(mainTaskName => {
+      const groupTasks = groups[mainTaskName];
+
+      // Draw Main Task Group Header Row (No bar)
+      const headerRow = document.createElement('div');
+      headerRow.className = 'gantt-row';
+      headerRow.style.backgroundColor = 'rgba(241, 245, 249, 0.4)';
+      headerRow.style.fontWeight = 'bold';
+
+      const nameCellHeader = document.createElement('div');
+      nameCellHeader.className = 'gantt-task-name';
+      nameCellHeader.innerHTML = `<span style="color: var(--primary);"><i class="fa-solid fa-folder-open"></i> ${mainTaskName}</span>`;
+      headerRow.appendChild(nameCellHeader);
+
+      const timelineCellHeader = document.createElement('div');
+      timelineCellHeader.className = 'gantt-timeline-body-cell';
+      timelineCellHeader.style.gridColumn = 'span 24';
+      headerRow.appendChild(timelineCellHeader);
+      
+      elements.ganttChartRows.appendChild(headerRow);
+
+      // Draw each sub task
+      groupTasks.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'gantt-row';
+
+        const taskStart = new Date(t.start_date).getTime();
+        const taskEnd = new Date(t.end_date).getTime();
+
+        // Calculate Left Position and Width ratios
+        let leftPercent = ((taskStart - minDate.getTime()) / totalMs) * 100;
+        let widthPercent = ((taskEnd - taskStart) / totalMs) * 100;
+
+        // Restrict overflows
+        if (leftPercent < 0) leftPercent = 0;
+        if (widthPercent <= 0) widthPercent = 5; // minimum thickness
+        if (leftPercent + widthPercent > 100) widthPercent = 100 - leftPercent;
+
+        // Render Task name cell
+        const nameCell = document.createElement('div');
+        nameCell.className = 'gantt-task-name';
+        
+        const subTaskLabel = t.sub_task && t.sub_task.trim() !== ''
+          ? `<span style="padding-left: 15px;"><i class="fa-solid fa-arrow-turn-up" style="transform: rotate(90deg); margin-right: 5px; color: var(--text-muted);"></i> ${t.sub_task}</span>`
+          : `<span class="text-muted" style="padding-left: 15px; font-style: italic;">(ยังไม่มีกิจกรรมย่อย)</span>`;
+        nameCell.innerHTML = subTaskLabel;
+        row.appendChild(nameCell);
+
+        // Render absolute bar container in the timeline
+        const timelineCell = document.createElement('div');
+        timelineCell.className = 'gantt-timeline-body-cell';
+        timelineCell.style.gridColumn = 'span 24';
+
+        // Only draw timeline bar if there is an actual sub_task
+        if (t.sub_task && t.sub_task.trim() !== '') {
+          const bar = document.createElement('div');
+          bar.className = 'gantt-bar';
+          bar.style.left = `${leftPercent}%`;
+          bar.style.width = `${widthPercent}%`;
+          bar.title = `${t.main_task} - ${t.sub_task} (${t.progress_percent}%) - ผู้รับผิดชอบ: ${t.assignee_name || 'ไม่มี'} - วันเริ่ม: ${t.start_date} วันสิ้นสุด: ${t.end_date}`;
+
+          bar.innerHTML = `
+            <div class="gantt-bar-progress-fill" style="width: ${t.progress_percent}%;"></div>
+            <span>${t.progress_percent}%</span>
+          `;
+
+          // Allow click trigger edit modal
+          if (state.currentUser.role !== 'Executive') {
+            bar.addEventListener('click', async () => {
+              document.getElementById('gantt-task-id').value = t.id;
+              document.getElementById('gantt-main-input').value = t.main_task;
+              document.getElementById('gantt-sub-input').value = t.sub_task || '';
+              document.getElementById('gantt-start-input').value = t.start_date;
+              document.getElementById('gantt-end-input').value = t.end_date;
+              document.getElementById('gantt-progress-input').value = t.progress_percent;
+              document.getElementById('progress-val-lbl').innerText = t.progress_percent + '%';
+              
+              // Load members for assignee select
+              try {
+                const members = await API.members.list(state.activeProjectId);
+                const selectEl = document.getElementById('gantt-assignee-input');
+                selectEl.innerHTML = '<option value="">-- เลือกผู้รับผิดชอบ --</option>';
+                members.forEach(m => {
+                  const opt = document.createElement('option');
+                  opt.value = m.id;
+                  opt.textContent = `${m.full_name} (${m.nickname || m.position})`;
+                  if (t.assigned_member_id == m.id) {
+                    opt.selected = true;
+                  }
+                  selectEl.appendChild(opt);
+                });
+              } catch(err) {
+                console.error(err);
+              }
+              elements.modalAddGanttTask.showModal();
+            });
+          }
+          timelineCell.appendChild(bar);
+        }
+
+        row.appendChild(timelineCell);
+        elements.ganttChartRows.appendChild(row);
+      });
     });
   }
 
@@ -2903,20 +3318,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Bind project edits
       document.querySelectorAll('.edit-project-admin-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const pid = btn.getAttribute('data-id');
-          const name = btn.getAttribute('data-name');
-          const desc = btn.getAttribute('data-desc');
-          const status = btn.getAttribute('data-status');
-          const group = btn.getAttribute('data-group') || 'โครงการ TOAT Sandbox';
-
-          document.getElementById('edit-project-id').value = pid;
-          document.getElementById('proj-name-input').value = name;
-          document.getElementById('proj-desc-input').value = desc;
-          document.getElementById('proj-status-input').value = status;
-          document.getElementById('proj-group-input').value = group;
-          
-          elements.modalCreateProject.showModal();
+          try {
+            const p = await API.projects.get(pid);
+            document.getElementById('edit-project-id').value = p.id;
+            document.getElementById('proj-name-input').value = p.project_name;
+            document.getElementById('proj-desc-input').value = p.description || '';
+            document.getElementById('proj-objectives-input').value = p.objectives || '';
+            document.getElementById('proj-scope-input').value = p.scope || '';
+            document.getElementById('proj-targets-input').value = p.targets || '';
+            document.getElementById('proj-strategic-input').value = p.strategic_alignment || '';
+            document.getElementById('proj-values-input').value = p.values_alignment || '';
+            document.getElementById('proj-status-input').value = p.status;
+            document.getElementById('proj-group-input').value = p.project_group || 'โครงการ TOAT Sandbox';
+            document.getElementById('proj-logo-input').value = ''; // Reset file input
+            elements.modalCreateProject.showModal();
+          } catch (err) {
+            alert('ไม่สามารถโหลดข้อมูลโครงการได้: ' + err.message);
+          }
         });
       });
 
@@ -3037,6 +3457,179 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.triggerResultLog.textContent += `[ERROR] เกิดความล้มเหลว: ${err.message}`;
     }
   });
+
+  // ----------------------------------------------------
+  // EDIT PROFILE & CHANGE PASSWORD MODAL LOGIC
+  // ----------------------------------------------------
+  const btnProfileTabInfo = document.getElementById('btn-profile-tab-info');
+  const btnProfileTabPassword = document.getElementById('btn-profile-tab-password');
+  const formEditProfile = document.getElementById('form-edit-profile');
+  const formChangePassword = document.getElementById('form-change-password');
+  const profilePhotoInput = document.getElementById('profile-photo-input');
+  const profilePreviewImg = document.getElementById('profile-preview-img');
+  const profilePreviewPlaceholder = document.getElementById('profile-preview-placeholder');
+
+  function showProfileTab(tabName) {
+    if (!btnProfileTabInfo || !btnProfileTabPassword || !formEditProfile || !formChangePassword) return;
+    if (tabName === 'info') {
+      btnProfileTabInfo.classList.add('active');
+      btnProfileTabInfo.style.borderBottom = '2px solid var(--primary)';
+      btnProfileTabInfo.style.color = 'var(--primary)';
+
+      btnProfileTabPassword.classList.remove('active');
+      btnProfileTabPassword.style.borderBottom = '2px solid transparent';
+      btnProfileTabPassword.style.color = 'var(--text-muted)';
+
+      formEditProfile.classList.remove('hidden');
+      formChangePassword.classList.add('hidden');
+    } else {
+      btnProfileTabPassword.classList.add('active');
+      btnProfileTabPassword.style.borderBottom = '2px solid var(--primary)';
+      btnProfileTabPassword.style.color = 'var(--primary)';
+
+      btnProfileTabInfo.classList.remove('active');
+      btnProfileTabInfo.style.borderBottom = '2px solid transparent';
+      btnProfileTabInfo.style.color = 'var(--text-muted)';
+
+      formChangePassword.classList.remove('hidden');
+      formEditProfile.classList.add('hidden');
+    }
+  }
+
+  if (btnProfileTabInfo) {
+    btnProfileTabInfo.addEventListener('click', () => showProfileTab('info'));
+  }
+  if (btnProfileTabPassword) {
+    btnProfileTabPassword.addEventListener('click', () => showProfileTab('password'));
+  }
+
+  if (profilePhotoInput) {
+    profilePhotoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && profilePreviewImg && profilePreviewPlaceholder) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          profilePreviewImg.src = event.target.result;
+          profilePreviewImg.classList.remove('hidden');
+          profilePreviewPlaceholder.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  const openEditProfileModal = () => {
+    if (!state.currentUser) return;
+    
+    if (formEditProfile) formEditProfile.reset();
+    if (formChangePassword) formChangePassword.reset();
+    if (profilePhotoInput) profilePhotoInput.value = '';
+    
+    const emailEl = document.getElementById('profile-email');
+    const employeeIdEl = document.getElementById('profile-employee-id');
+    const phoneEl = document.getElementById('profile-phone-number');
+    const divisionEl = document.getElementById('profile-division');
+    const departmentEl = document.getElementById('profile-department');
+    const lineIdEl = document.getElementById('profile-line-id');
+
+    if (emailEl) emailEl.value = state.currentUser.email || '';
+    if (employeeIdEl) employeeIdEl.value = state.currentUser.employee_id || '';
+    if (phoneEl) phoneEl.value = state.currentUser.phone_number || '';
+    if (divisionEl) divisionEl.value = state.currentUser.division || '';
+    if (departmentEl) departmentEl.value = state.currentUser.department || '';
+    if (lineIdEl) lineIdEl.value = state.currentUser.line_id || '';
+    
+    if (profilePreviewImg && profilePreviewPlaceholder) {
+      if (state.currentUser.photo_path) {
+        profilePreviewImg.src = state.currentUser.photo_path + '?t=' + new Date().getTime();
+        profilePreviewImg.classList.remove('hidden');
+        profilePreviewPlaceholder.classList.add('hidden');
+      } else {
+        profilePreviewImg.src = '';
+        profilePreviewImg.classList.add('hidden');
+        profilePreviewPlaceholder.classList.remove('hidden');
+      }
+    }
+    
+    showProfileTab('info');
+    const modal = document.getElementById('modal-edit-profile');
+    if (modal) modal.showModal();
+  };
+
+  const sidebarAvatarContainer = document.getElementById('sidebar-user-avatar-container');
+  const sidebarUserInfoArea = document.getElementById('sidebar-user-info-area');
+  
+  if (sidebarAvatarContainer) {
+    sidebarAvatarContainer.addEventListener('click', openEditProfileModal);
+  }
+  if (sidebarUserInfoArea) {
+    sidebarUserInfoArea.addEventListener('click', openEditProfileModal);
+  }
+
+  if (formEditProfile) {
+    formEditProfile.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      const emailVal = document.getElementById('profile-email')?.value || '';
+      const employeeIdVal = document.getElementById('profile-employee-id')?.value || '';
+      const phoneVal = document.getElementById('profile-phone-number')?.value || '';
+      const divisionVal = document.getElementById('profile-division')?.value || '';
+      const departmentVal = document.getElementById('profile-department')?.value || '';
+      const lineIdVal = document.getElementById('profile-line-id')?.value || '';
+      const file = profilePhotoInput?.files?.[0];
+
+      formData.append('email', emailVal);
+      formData.append('employee_id', employeeIdVal);
+      formData.append('phone_number', phoneVal);
+      formData.append('division', divisionVal);
+      formData.append('department', departmentVal);
+      formData.append('line_id', lineIdVal);
+      if (file) {
+        formData.append('profile_photo', file);
+      }
+
+      try {
+        await API.users.updateProfile(formData);
+        alert('บันทึกข้อมูลส่วนตัวสำเร็จ');
+        const modal = document.getElementById('modal-edit-profile');
+        if (modal) modal.close();
+        
+        // Reload user stats/auth to update sidebar avatar immediately
+        await checkAuth();
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message);
+      }
+    });
+  }
+
+  if (formChangePassword) {
+    formChangePassword.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const currentPassword = document.getElementById('pwd-current')?.value || '';
+      const newPassword = document.getElementById('pwd-new')?.value || '';
+      const confirmPassword = document.getElementById('pwd-confirm')?.value || '';
+
+      if (newPassword.length < 6) {
+        alert('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert('รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน');
+        return;
+      }
+
+      try {
+        await API.users.changePassword(currentPassword, newPassword);
+        alert('เปลี่ยนรหัสผ่านสำเร็จแล้ว');
+        formChangePassword.reset();
+        const modal = document.getElementById('modal-edit-profile');
+        if (modal) modal.close();
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน: ' + err.message);
+      }
+    });
+  }
 
   // ----------------------------------------------------
   // LAUNCH APP CHECK

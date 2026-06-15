@@ -66,21 +66,29 @@ const API = {
       return res.json();
     },
     async create(projectData) {
-      const res = await fetch('/api/projects', {
+      const isFormData = projectData instanceof FormData;
+      const options = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData)
-      });
+        body: isFormData ? projectData : JSON.stringify(projectData)
+      };
+      if (!isFormData) {
+        options.headers = { 'Content-Type': 'application/json' };
+      }
+      const res = await fetch('/api/projects', options);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create project');
       return data;
     },
     async update(id, projectData) {
-      const res = await fetch(`/api/projects/${id}`, {
+      const isFormData = projectData instanceof FormData;
+      const options = {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData)
-      });
+        body: isFormData ? projectData : JSON.stringify(projectData)
+      };
+      if (!isFormData) {
+        options.headers = { 'Content-Type': 'application/json' };
+      }
+      const res = await fetch(`/api/projects/${id}`, options);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update project');
       return data;
@@ -89,6 +97,18 @@ const API = {
       const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete project');
+      return data;
+    },
+    async toggleHide(id) {
+      const res = await fetch(`/api/projects/${id}/toggle-hide`, { method: 'PUT' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to toggle visibility');
+      return data;
+    },
+    async toggleSuspend(id) {
+      const res = await fetch(`/api/projects/${id}/toggle-suspend`, { method: 'PUT' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to toggle suspension');
       return data;
     }
   },
@@ -379,6 +399,29 @@ const API = {
       const res = await fetch('/api/notifications/read', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to clear notifications');
+      return data;
+    }
+  },
+
+  // Users Profile & Password management
+  users: {
+    async updateProfile(formData) {
+      const res = await fetch('/api/users/profile', {
+        method: 'PUT',
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+      return data;
+    },
+    async changePassword(currentPassword, newPassword) {
+      const res = await fetch('/api/users/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to change password');
       return data;
     }
   }

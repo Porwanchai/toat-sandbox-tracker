@@ -114,10 +114,14 @@
       </div>
 
       <div class="user-profile">
-        <div class="user-avatar">
-          <i class="fa-solid fa-circle-user"></i>
+        <div class="user-avatar" id="sidebar-user-avatar-container" style="cursor: pointer; position: relative;" title="แก้ไขข้อมูลโปรไฟล์">
+          <img id="sidebar-user-avatar" src="" alt="User Avatar" class="avatar-img hidden" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2);">
+          <i id="sidebar-user-avatar-placeholder" class="fa-solid fa-circle-user" style="font-size: 40px; color: #94a3b8;"></i>
+          <div class="avatar-edit-overlay" style="position: absolute; bottom: -2px; right: -2px; background: var(--primary); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 8px; border: 1px solid var(--bg-sidebar);">
+            <i class="fa-solid fa-pen"></i>
+          </div>
         </div>
-        <div class="user-info">
+        <div class="user-info" id="sidebar-user-info-area" style="cursor: pointer;" title="แก้ไขข้อมูลโปรไฟล์">
           <span class="user-name" id="display-username">Loading...</span>
           <span class="user-role badge" id="display-role">Staff</span>
         </div>
@@ -350,9 +354,15 @@
                 <h2>รายการโครงการทั้งหมด</h2>
                 <p>ค้นหาและคัดเลือกโครงการในความรับผิดชอบของคุณ</p>
               </div>
-              <button class="btn btn-primary" id="open-create-project-modal-btn">
-                <i class="fa-solid fa-plus"></i> สร้างโครงการใหม่
-              </button>
+              <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+                  <input type="checkbox" id="show-hidden-projects-chk" style="width: 15px; height: 15px; cursor: pointer;">
+                  แสดงโครงการที่ถูกซ่อน/ปิดตา
+                </label>
+                <button class="btn btn-primary" id="open-create-project-modal-btn">
+                  <i class="fa-solid fa-plus"></i> สร้างโครงการใหม่
+                </button>
+              </div>
             </div>
           </div>
 
@@ -364,24 +374,64 @@
 
         <!-- 3. Project Workspace View (Tabbed UI) -->
         <section id="view-project-workspace" class="app-view hidden">
-          <div class="workspace-header glassmorphism">
-            <div class="workspace-title-area">
-              <span class="workspace-project-status badge" id="ws-project-status">In Progress</span>
-              <h2 id="ws-project-name">ชื่อโครงการโหลด...</h2>
-              <p id="ws-project-desc">รายละเอียดโครงการ...</p>
-              <button class="btn btn-warning btn-xs hidden" id="ws-edit-project-btn" style="margin-top: 10px;">
-                <i class="fa-solid fa-pen-to-square"></i> แก้ไขรายละเอียดโครงการ
-              </button>
-            </div>
-            <div class="workspace-overall-progress-bar">
-              <div class="progress-info">
-                <span>ความคืบหน้าโครงการ</span>
-                <span id="ws-overall-progress-text">0%</span>
+          <div class="workspace-header glassmorphism" style="display: block; padding: 1.75rem;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; width: 100%;">
+              <div class="workspace-brand-area">
+                <div class="workspace-logo-container" id="ws-project-logo-container">
+                  <img id="ws-project-logo" src="images/logo.png" alt="Project Logo" class="workspace-logo hidden">
+                  <div id="ws-project-logo-placeholder" class="workspace-logo-placeholder"><i class="fa-solid fa-rocket"></i></div>
+                </div>
+                <div class="workspace-title-area">
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span class="workspace-project-status badge" id="ws-project-status">In Progress</span>
+                    <span id="ws-project-group-badge" class="badge project-group-badge" style="background: rgba(255,255,255,0.1); color: var(--text-main); font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-card);">กลุ่ม...</span>
+                  </div>
+                  <h2 id="ws-project-name" style="margin: 0.5rem 0;">ชื่อโครงการโหลด...</h2>
+                  <button class="btn btn-warning btn-xs hidden" id="ws-edit-project-btn" style="margin-top: 5px;">
+                    <i class="fa-solid fa-pen-to-square"></i> แก้ไขรายละเอียดโครงการ
+                  </button>
+                </div>
               </div>
-              <div class="progress-track">
-                <div class="progress-fill" id="ws-overall-progress-fill" style="width: 0%;"></div>
+              <div class="workspace-overall-progress-bar">
+                <div class="progress-info">
+                  <span>ความคืบหน้าโครงการ</span>
+                  <span id="ws-overall-progress-text">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="ws-overall-progress-fill" style="width: 0%;"></div>
+                </div>
               </div>
             </div>
+
+            <!-- Project Details Grid -->
+            <div class="workspace-details-grid" style="margin-top: 1.5rem; border-top: 1px solid var(--border-card); padding-top: 1.25rem;">
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> รายละเอียดโครงการ</strong>
+                <p id="ws-project-desc">รายละเอียดโครงการ...</p>
+              </div>
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-bullseye" style="color: var(--primary);"></i> วัตถุประสงค์โครงการ</strong>
+                <p id="ws-project-objectives">-</p>
+              </div>
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-crop-simple" style="color: var(--primary);"></i> ขอบเขตโครงการ</strong>
+                <p id="ws-project-scope">-</p>
+              </div>
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-flag" style="color: var(--primary);"></i> เป้าหมายโครงการ</strong>
+                <p id="ws-project-targets">-</p>
+              </div>
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-chess-knight" style="color: var(--primary);"></i> ความเกี่ยวเนื่องยุทธศาสตร์องค์กร</strong>
+                <p id="ws-project-strategic">-</p>
+              </div>
+              <div class="detail-card">
+                <strong><i class="fa-solid fa-heart" style="color: var(--primary);"></i> ความเกี่ยวเนื่องค่านิยมองค์กร TOAT</strong>
+                <p id="ws-project-values">-</p>
+              </div>
+            </div>
+
           </div>
 
           <!-- Tabs Navigation -->
@@ -913,36 +963,73 @@
   <dialog id="modal-create-project" closedby="any" aria-labelledby="lbl-create-project">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="lbl-create-project">สร้างโครงการใหม่ใน TOAT Sandbox</h3>
+        <h3 id="lbl-create-project">สร้าง/แก้ไขโครงการใน TOAT Sandbox</h3>
         <button class="btn-close-modal" onclick="document.getElementById('modal-create-project').close()">&times;</button>
       </div>
       <form id="form-create-project">
         <input type="hidden" id="edit-project-id">
+        
         <div class="form-group">
           <label for="proj-name-input">ชื่อโครงการ:</label>
           <input type="text" id="proj-name-input" required placeholder="เช่น ระบบการจัดการพลังงานอาคารอัจฉริยะ">
         </div>
-        <div class="form-group">
-          <label for="proj-desc-input">คำอธิบายรายละเอียดโครงการ:</label>
-          <textarea id="proj-desc-input" placeholder="รายละเอียดวัตถุประสงค์ ขอบเขต และเป้าหมาย..." rows="3"></textarea>
+        
+        <div class="form-group-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="proj-group-input">กลุ่มโครงการ:</label>
+            <select id="proj-group-input" required>
+              <option value="โครงการ TOAT Sandbox">โครงการ TOAT Sandbox</option>
+              <option value="โครงการอยู่ระหว่างนำเสนอ">โครงการอยู่ระหว่างนำเสนอ</option>
+              <option value="โครงการเดิมที่ดำเนินงานจริง">โครงการเดิมที่ดำเนินงานจริง</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="proj-status-input">สถานะโครงการ:</label>
+            <select id="proj-status-input">
+              <option value="Not Started">Not Started (ยังไม่เริ่ม)</option>
+              <option value="In Progress">In Progress (กำลังดำเนินการ)</option>
+              <option value="Delayed">Delayed (ล่าช้า)</option>
+              <option value="Completed">Completed (เสร็จสิ้น)</option>
+            </select>
+          </div>
         </div>
+
         <div class="form-group">
-          <label for="proj-group-input">กลุ่มโครงการ:</label>
-          <select id="proj-group-input" required>
-            <option value="โครงการ TOAT Sandbox">โครงการ TOAT Sandbox</option>
-            <option value="โครงการอยู่ระหว่างนำเสนอ">โครงการอยู่ระหว่างนำเสนอ</option>
-            <option value="โครงการเดิมที่ดำเนินงานจริง">โครงการเดิมที่ดำเนินงานจริง</option>
-          </select>
+          <label for="proj-logo-input">ตราสัญลักษณ์โครงการ (Logo/Emblem):</label>
+          <input type="file" id="proj-logo-input" accept="image/*">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">รองรับไฟล์ภาพ .png, .jpg, .jpeg</small>
         </div>
+
         <div class="form-group">
-          <label for="proj-status-input">สถานะแรกเริ่ม:</label>
-          <select id="proj-status-input">
-            <option value="Not Started">Not Started</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Delayed">Delayed</option>
-            <option value="Completed">Completed</option>
-          </select>
+          <label for="proj-desc-input">รายละเอียดโครงการ:</label>
+          <textarea id="proj-desc-input" placeholder="คำอธิบายรายละเอียดภาพรวมของโครงการ..." rows="2"></textarea>
         </div>
+
+        <div class="form-group">
+          <label for="proj-objectives-input">วัตถุประสงค์โครงการ:</label>
+          <textarea id="proj-objectives-input" placeholder="วัตถุประสงค์ของการดำเนินงาน..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="proj-scope-input">ขอบเขตโครงการ:</label>
+          <textarea id="proj-scope-input" placeholder="ขอบเขตของโครงการในการทำงาน..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="proj-targets-input">เป้าหมายโครงการ:</label>
+          <textarea id="proj-targets-input" placeholder="เป้าหมาย หรือ ผลผลิตของโครงการ..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="proj-strategic-input">ความเกี่ยวเนื่องยุทธศาสตร์องค์กร:</label>
+          <textarea id="proj-strategic-input" placeholder="ความเกี่ยวเนื่องกับยุทธศาสตร์ขององค์กรอย่างไร..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="proj-values-input">ความเกี่ยวเนื่องค่านิยมองค์กร TOAT:</label>
+          <textarea id="proj-values-input" placeholder="ความสอดคล้องกับค่านิยมขององค์กร TOAT..." rows="2"></textarea>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-create-project').close()">ยกเลิก</button>
           <button type="submit" class="btn btn-primary">บันทึกข้อมูลโครงการ</button>
@@ -1179,7 +1266,8 @@
         <input type="hidden" id="gantt-task-id" name="id">
         <div class="form-group">
           <label for="gantt-main-input">งานหลัก (Main Task):</label>
-          <input type="text" id="gantt-main-input" name="main_task" required placeholder="เช่น สำรวจพื้นที่และออกแบบ">
+          <input type="text" id="gantt-main-input" name="main_task" list="gantt-main-tasks-list" required placeholder="เช่น สำรวจพื้นที่และออกแบบ">
+          <datalist id="gantt-main-tasks-list"></datalist>
         </div>
         <div class="form-group">
           <label for="gantt-sub-input">งานย่อย (Sub Task):</label>
@@ -1254,6 +1342,98 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-create-monthly-report').close()">ยกเลิก</button>
           <button type="submit" class="btn btn-success">บันทึก / ส่งรายงาน</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal: Edit Profile & Change Password -->
+  <dialog id="modal-edit-profile" closedby="any" aria-labelledby="lbl-edit-profile">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="lbl-edit-profile">แก้ไขข้อมูลโปรไฟล์ & เปลี่ยนรหัสผ่าน</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('modal-edit-profile').close()">&times;</button>
+      </div>
+      
+      <!-- Tab Controls inside Modal to separate Profile Edit and Password Change -->
+      <div class="profile-modal-tabs" style="display: flex; border-bottom: 1px solid var(--border-card); margin-bottom: 1rem;">
+        <button type="button" class="profile-tab-btn active" id="btn-profile-tab-info" style="flex: 1; padding: 0.75rem; border: none; background: none; border-bottom: 2px solid var(--primary); color: var(--primary); font-weight: bold; cursor: pointer;">ข้อมูลส่วนตัว</button>
+        <button type="button" class="profile-tab-btn" id="btn-profile-tab-password" style="flex: 1; padding: 0.75rem; border: none; background: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: bold; cursor: pointer;">เปลี่ยนรหัสผ่าน</button>
+      </div>
+
+      <!-- Tab 1: Profile Info -->
+      <form id="form-edit-profile" class="profile-tab-content">
+        <div class="form-group" style="text-align: center; margin-bottom: 1.5rem;">
+          <div style="position: relative; display: inline-block; width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--primary-light); background: var(--bg-app); overflow: hidden; margin: 0 auto 0.5rem; box-shadow: var(--box-shadow);">
+            <img id="profile-preview-img" src="" alt="Profile Photo Preview" class="hidden" style="width: 100%; height: 100%; object-fit: cover;">
+            <i id="profile-preview-placeholder" class="fa-solid fa-circle-user" style="font-size: 94px; color: var(--text-muted); line-height: 100px;"></i>
+          </div>
+          <div>
+            <label for="profile-photo-input" class="btn btn-secondary btn-xs" style="cursor: pointer; display: inline-block;">
+              <i class="fa-solid fa-camera"></i> เลือกรูปโปรไฟล์ใหม่
+            </label>
+            <input type="file" id="profile-photo-input" accept="image/*" style="display: none;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="profile-email">อีเมล:</label>
+          <input type="email" id="profile-email" required placeholder="เช่น email@example.com">
+        </div>
+
+        <div class="form-group-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="profile-employee-id">รหัสพนักงาน:</label>
+            <input type="text" id="profile-employee-id" placeholder="รหัสพนักงาน">
+          </div>
+          <div class="form-group">
+            <label for="profile-phone-number">เบอร์โทรศัพท์:</label>
+            <input type="tel" id="profile-phone-number" placeholder="เบอร์โทรศัพท์">
+          </div>
+        </div>
+
+        <div class="form-group-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="profile-division">ฝ่าย:</label>
+            <input type="text" id="profile-division" placeholder="เช่น ฝ่ายพัฒนาธุรกิจ">
+          </div>
+          <div class="form-group">
+            <label for="profile-department">กอง:</label>
+            <input type="text" id="profile-department" placeholder="เช่น กองวิจัยและนวัตกรรม">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="profile-line-id">Line ID:</label>
+          <input type="text" id="profile-line-id" placeholder="Line ID">
+        </div>
+
+        <div class="modal-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-card); margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-edit-profile').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูลส่วนตัว</button>
+        </div>
+      </form>
+
+      <!-- Tab 2: Change Password -->
+      <form id="form-change-password" class="profile-tab-content hidden">
+        <div class="form-group">
+          <label for="pwd-current">รหัสผ่านปัจจุบัน:</label>
+          <input type="password" id="pwd-current" required placeholder="รหัสผ่านปัจจุบัน">
+        </div>
+
+        <div class="form-group">
+          <label for="pwd-new">รหัสผ่านใหม่:</label>
+          <input type="password" id="pwd-new" required placeholder="อย่างน้อย 6 ตัวอักษร">
+        </div>
+
+        <div class="form-group">
+          <label for="pwd-confirm">ยืนยันรหัสผ่านใหม่:</label>
+          <input type="password" id="pwd-confirm" required placeholder="ยืนยันรหัสผ่านใหม่">
+        </div>
+
+        <div class="modal-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-card); margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-edit-profile').close()">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">เปลี่ยนรหัสผ่าน</button>
         </div>
       </form>
     </div>

@@ -82,6 +82,7 @@ async function initDatabase() {
       phone_number TEXT,
       is_approved INTEGER DEFAULT 0,
       allowed_views TEXT DEFAULT 'dashboard,projects-list',
+      photo_path TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -90,8 +91,16 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       project_name TEXT NOT NULL,
       description TEXT,
+      objectives TEXT,
+      scope TEXT,
+      targets TEXT,
+      strategic_alignment TEXT,
+      values_alignment TEXT,
+      logo_path TEXT,
       status TEXT CHECK(status IN ('Not Started', 'In Progress', 'Delayed', 'Completed')) NOT NULL DEFAULT 'Not Started',
       project_group TEXT DEFAULT 'โครงการ TOAT Sandbox',
+      is_hidden INTEGER DEFAULT 0,
+      is_suspended INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -255,6 +264,41 @@ async function initDatabase() {
     }
     if (!budgetColumns.some(c => c.name === 'remarks')) {
       await dbRun("ALTER TABLE budgets ADD COLUMN remarks TEXT");
+    }
+
+    // 15. Run Migrations for Round 12 (is_hidden and is_suspended columns)
+    const projectsColsLatest = await dbAll("PRAGMA table_info(projects)");
+    if (!projectsColsLatest.some(c => c.name === 'is_hidden')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN is_hidden INTEGER DEFAULT 0");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'is_suspended')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN is_suspended INTEGER DEFAULT 0");
+    }
+
+    // 16. Run Migrations for Project Details expansion & Logo Upload
+    if (!projectsColsLatest.some(c => c.name === 'objectives')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN objectives TEXT");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'scope')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN scope TEXT");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'targets')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN targets TEXT");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'strategic_alignment')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN strategic_alignment TEXT");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'values_alignment')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN values_alignment TEXT");
+    }
+    if (!projectsColsLatest.some(c => c.name === 'logo_path')) {
+      await dbRun("ALTER TABLE projects ADD COLUMN logo_path TEXT");
+    }
+
+    // 17. Run Migrations for User Profile Photo
+    const usersColsLatest = await dbAll("PRAGMA table_info(users)");
+    if (!usersColsLatest.some(c => c.name === 'photo_path')) {
+      await dbRun("ALTER TABLE users ADD COLUMN photo_path TEXT");
     }
 
     console.log('All database tables initialized.');

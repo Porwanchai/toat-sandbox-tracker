@@ -186,6 +186,90 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
+// Update Profile Info & Avatar
+app.put('/api/users/profile', requireLogin, uploadUserProfilePhoto, async (req, res) => {
+  const { email, employee_id, division, department, phone_number, line_id } = req.body;
+  const userId = req.session.user.id;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
+
+  try {
+    if (photo_path) {
+      await dbRun(
+        `UPDATE users SET 
+          email = ?, 
+          employee_id = ?, 
+          division = ?, 
+          department = ?, 
+          phone_number = ?, 
+          line_id = ?, 
+          photo_path = ? 
+        WHERE id = ?`,
+        [email, employee_id || '', division || '', department || '', phone_number || '', line_id || '', photo_path, userId]
+      );
+    } else {
+      await dbRun(
+        `UPDATE users SET 
+          email = ?, 
+          employee_id = ?, 
+          division = ?, 
+          department = ?, 
+          phone_number = ?, 
+          line_id = ? 
+        WHERE id = ?`,
+        [email, employee_id || '', division || '', department || '', phone_number || '', line_id || '', userId]
+      );
+    }
+
+    // Refresh user details in session
+    const updatedUser = await dbGet('SELECT id, username, email, role, photo_path, allowed_views, is_approved FROM users WHERE id = ?', [userId]);
+    req.session.user = updatedUser;
+
+    res.json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Change Password
+app.put('/api/users/change-password', requireLogin, async (req, res) => {
+  const { current_password, new_password } = req.body;
+  const userId = req.session.user.id;
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Current password and new password are required' });
+  }
+
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+  }
+
+  try {
+    const user = await dbGet('SELECT password_hash FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const isMatch = bcrypt.compareSync(current_password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Incorrect current password' });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const newHash = bcrypt.hashSync(new_password, salt);
+
+    await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId]);
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ----------------------------------------------------
 // PROJECT ENDPOINTS
 // ----------------------------------------------------
@@ -214,23 +298,26 @@ app.get('/api/projects/stats', requireLogin, async (req, res) => {
   try {
     let budgetQuery = `
       SELECT 
-        SUM(allocated_amount) as total_allocated,
-        SUM(spent_amount) as total_spent,
-        (SUM(allocated_amount) - SUM(spent_amount)) as total_remaining
+        SUM(b.allocated_amount) as total_allocated,
+        SUM(b.spent_amount) as total_spent,
+        (SUM(b.allocated_amount) - SUM(b.spent_amount)) as total_remaining
       FROM budgets b
+      JOIN projects p ON b.project_id = p.id
+      WHERE p.is_hidden = 0
     `;
     let statusQuery = `
-      SELECT status, COUNT(*) as count 
+      SELECT p.status, COUNT(*) as count 
       FROM projects p
+      WHERE p.is_hidden = 0
     `;
     let queryParams = [];
 
     if (role === 'Project Submitter') {
-      budgetQuery += ` JOIN project_assignments pa ON b.project_id = pa.project_id WHERE pa.user_id = ?`;
-      statusQuery += ` JOIN project_assignments pa ON p.id = pa.project_id WHERE pa.user_id = ? GROUP BY status`;
+      budgetQuery += ` AND b.project_id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)`;
+      statusQuery += ` AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?) GROUP BY p.status`;
       queryParams = [userId];
     } else {
-      statusQuery += ` GROUP BY status`;
+      statusQuery += ` GROUP BY p.status`;
     }
 
     const budgetStats = await dbGet(budgetQuery, queryParams);
@@ -274,7 +361,11 @@ app.get('/api/projects', requireLogin, async (req, res) => {
       SELECT 
         p.*, 
         (
-          SELECT COALESCE(AVG(gt.progress_percent), 0) 
+          SELECT COALESCE(
+            AVG(CASE WHEN gt.sub_task IS NOT NULL AND gt.sub_task != '' THEN gt.progress_percent ELSE NULL END),
+            AVG(gt.progress_percent),
+            0
+          )
           FROM gantt_tasks gt 
           WHERE gt.project_id = p.id
         ) as overall_progress,
@@ -292,10 +383,20 @@ app.get('/api/projects', requireLogin, async (req, res) => {
           SELECT status 
           FROM monthly_reports mr 
           WHERE mr.project_id = p.id AND mr.report_month_year = ?
-        ) as current_report_status
+        ) as current_report_status,
+        (
+          CASE 
+            WHEN ? = 'Admin' THEN 1
+            WHEN ? = 'Project Submitter' AND EXISTS (
+              SELECT 1 FROM project_assignments pa 
+              WHERE pa.project_id = p.id AND pa.user_id = ?
+            ) THEN 1
+            ELSE 0
+          END
+        ) as can_edit
       FROM projects p
     `;
-    let params = [reportMonthYear];
+    let params = [reportMonthYear, role, role, userId];
 
     const projects = await dbAll(query, params);
     res.json(projects);
@@ -305,15 +406,51 @@ app.get('/api/projects', requireLogin, async (req, res) => {
 });
 
 // Create Project (Admin & Staff/Project Submitter can create)
-app.post('/api/projects', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
-  const { project_name, description, status, project_group } = req.body;
+app.post('/api/projects', requireLogin, requireRole(['Admin', 'Project Submitter']), uploadProjectLogo, async (req, res) => {
+  const { 
+    project_name, 
+    description, 
+    objectives, 
+    scope, 
+    targets, 
+    strategic_alignment, 
+    values_alignment, 
+    status, 
+    project_group 
+  } = req.body;
+
   if (!project_name) {
     return res.status(400).json({ error: 'Project name is required' });
   }
+
+  const logo_path = req.file ? `/uploads/${req.file.filename}` : null;
+
   try {
     const result = await dbRun(
-      'INSERT INTO projects (project_name, description, status, project_group) VALUES (?, ?, ?, ?)',
-      [project_name, description, status || 'Not Started', project_group || 'โครงการ TOAT Sandbox']
+      `INSERT INTO projects (
+        project_name, 
+        description, 
+        objectives, 
+        scope, 
+        targets, 
+        strategic_alignment, 
+        values_alignment, 
+        logo_path, 
+        status, 
+        project_group
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        project_name, 
+        description || '', 
+        objectives || '', 
+        scope || '', 
+        targets || '', 
+        strategic_alignment || '', 
+        values_alignment || '', 
+        logo_path, 
+        status || 'Not Started', 
+        project_group || 'โครงการ TOAT Sandbox'
+      ]
     );
     const projectId = result.lastID;
 
@@ -342,7 +479,15 @@ app.get('/api/projects/:id', requireLogin, async (req, res) => {
     const project = await dbGet(`
       SELECT 
         p.*,
-        (SELECT COALESCE(AVG(progress_percent), 0) FROM gantt_tasks WHERE project_id = p.id) as overall_progress
+        (
+          SELECT COALESCE(
+            AVG(CASE WHEN sub_task IS NOT NULL AND sub_task != '' THEN progress_percent ELSE NULL END),
+            AVG(progress_percent),
+            0
+          )
+          FROM gantt_tasks 
+          WHERE project_id = p.id
+        ) as overall_progress
       FROM projects p 
       WHERE p.id = ?
     `, [projectId]);
@@ -361,14 +506,26 @@ app.get('/api/projects/:id', requireLogin, async (req, res) => {
 });
 
 // Update Project (Admin & Staff)
-app.put('/api/projects/:id', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
+app.put('/api/projects/:id', requireLogin, requireRole(['Admin', 'Project Submitter']), uploadProjectLogo, async (req, res) => {
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
-  const { project_name, description, status, project_group } = req.body;
+  const { 
+    project_name, 
+    description, 
+    objectives, 
+    scope, 
+    targets, 
+    strategic_alignment, 
+    values_alignment, 
+    status, 
+    project_group 
+  } = req.body;
 
   if (!project_name) {
     return res.status(400).json({ error: 'Project name is required' });
   }
+
+  const logo_path = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
     const canEdit = await checkProjectEditAccess(userId, role, projectId);
@@ -376,10 +533,61 @@ app.put('/api/projects/:id', requireLogin, requireRole(['Admin', 'Project Submit
       return res.status(403).json({ error: 'Access denied. You do not have permission to edit this project.' });
     }
 
-    await dbRun(
-      'UPDATE projects SET project_name = ?, description = ?, status = ?, project_group = ? WHERE id = ?',
-      [project_name, description, status, project_group || 'โครงการ TOAT Sandbox', projectId]
-    );
+    if (logo_path) {
+      await dbRun(
+        `UPDATE projects SET 
+          project_name = ?, 
+          description = ?, 
+          objectives = ?, 
+          scope = ?, 
+          targets = ?, 
+          strategic_alignment = ?, 
+          values_alignment = ?, 
+          logo_path = ?, 
+          status = ?, 
+          project_group = ? 
+        WHERE id = ?`,
+        [
+          project_name, 
+          description || '', 
+          objectives || '', 
+          scope || '', 
+          targets || '', 
+          strategic_alignment || '', 
+          values_alignment || '', 
+          logo_path, 
+          status, 
+          project_group || 'โครงการ TOAT Sandbox', 
+          projectId
+        ]
+      );
+    } else {
+      await dbRun(
+        `UPDATE projects SET 
+          project_name = ?, 
+          description = ?, 
+          objectives = ?, 
+          scope = ?, 
+          targets = ?, 
+          strategic_alignment = ?, 
+          values_alignment = ?, 
+          status = ?, 
+          project_group = ? 
+        WHERE id = ?`,
+        [
+          project_name, 
+          description || '', 
+          objectives || '', 
+          scope || '', 
+          targets || '', 
+          strategic_alignment || '', 
+          values_alignment || '', 
+          status, 
+          project_group || 'โครงการ TOAT Sandbox', 
+          projectId
+        ]
+      );
+    }
 
     res.json({ message: 'Project updated successfully' });
   } catch (error) {
@@ -393,6 +601,36 @@ app.delete('/api/projects/:id', requireLogin, requireRole(['Admin']), async (req
   try {
     await dbRun('DELETE FROM projects WHERE id = ?', [projectId]);
     res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Toggle project visibility (Hide/Unhide)
+app.put('/api/projects/:id/toggle-hide', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
+  const projectId = req.params.id;
+  const { id: userId, role } = req.session.user;
+  try {
+    const canEdit = await checkProjectEditAccess(userId, role, projectId);
+    if (!canEdit) return res.status(403).json({ error: 'Access denied' });
+
+    await dbRun('UPDATE projects SET is_hidden = 1 - COALESCE(is_hidden, 0) WHERE id = ?', [projectId]);
+    res.json({ message: 'Project visibility toggled successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Toggle project suspension (Suspend/Resume)
+app.put('/api/projects/:id/toggle-suspend', requireLogin, requireRole(['Admin', 'Project Submitter']), async (req, res) => {
+  const projectId = req.params.id;
+  const { id: userId, role } = req.session.user;
+  try {
+    const canEdit = await checkProjectEditAccess(userId, role, projectId);
+    if (!canEdit) return res.status(403).json({ error: 'Access denied' });
+
+    await dbRun('UPDATE projects SET is_suspended = 1 - COALESCE(is_suspended, 0) WHERE id = ?', [projectId]);
+    res.json({ message: 'Project suspension status toggled successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -417,13 +655,29 @@ app.get('/api/projects/:id/members', requireLogin, async (req, res) => {
   }
 });
 
-const uploadMemberPhoto = (req, res, next) => {
+function uploadMemberPhoto(req, res, next) {
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('multipart/form-data')) {
     return upload.single('photo')(req, res, next);
   }
   next();
-};
+}
+
+function uploadProjectLogo(req, res, next) {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return upload.single('logo')(req, res, next);
+  }
+  next();
+}
+
+function uploadUserProfilePhoto(req, res, next) {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return upload.single('profile_photo')(req, res, next);
+  }
+  next();
+}
 
 // Add member
 app.post('/api/projects/:id/members', requireLogin, requireRole(['Admin', 'Project Submitter']), uploadMemberPhoto, async (req, res) => {
