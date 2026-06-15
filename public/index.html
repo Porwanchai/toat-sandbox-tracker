@@ -374,7 +374,7 @@
 
         <!-- 3. Project Workspace View (Tabbed UI) -->
         <section id="view-project-workspace" class="app-view hidden">
-          <div class="workspace-header glassmorphism" style="display: block; padding: 1.75rem;">
+          <div class="workspace-header glassmorphism" style="display: block; padding: 1.25rem 1.75rem; margin-bottom: 1rem;">
             
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; width: 100%;">
               <div class="workspace-brand-area">
@@ -404,39 +404,12 @@
               </div>
             </div>
 
-            <!-- Project Details Grid -->
-            <div class="workspace-details-grid" style="margin-top: 1.5rem; border-top: 1px solid var(--border-card); padding-top: 1.25rem;">
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> รายละเอียดโครงการ</strong>
-                <p id="ws-project-desc">รายละเอียดโครงการ...</p>
-              </div>
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-bullseye" style="color: var(--primary);"></i> วัตถุประสงค์โครงการ</strong>
-                <p id="ws-project-objectives">-</p>
-              </div>
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-crop-simple" style="color: var(--primary);"></i> ขอบเขตโครงการ</strong>
-                <p id="ws-project-scope">-</p>
-              </div>
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-flag" style="color: var(--primary);"></i> เป้าหมายโครงการ</strong>
-                <p id="ws-project-targets">-</p>
-              </div>
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-chess-knight" style="color: var(--primary);"></i> ความเกี่ยวเนื่องยุทธศาสตร์องค์กร</strong>
-                <p id="ws-project-strategic">-</p>
-              </div>
-              <div class="detail-card">
-                <strong><i class="fa-solid fa-heart" style="color: var(--primary);"></i> ความเกี่ยวเนื่องค่านิยมองค์กร TOAT</strong>
-                <p id="ws-project-values">-</p>
-              </div>
-            </div>
-
           </div>
 
           <!-- Tabs Navigation -->
           <div class="workspace-tabs-nav">
-            <button class="tab-btn active" data-tab="tab-team"><i class="fa-solid fa-users"></i> สมาชิก & ผู้เกี่ยวข้อง</button>
+            <button class="tab-btn active" data-tab="tab-details"><i class="fa-solid fa-circle-info"></i> รายละเอียดโครงการ</button>
+            <button class="tab-btn" data-tab="tab-team"><i class="fa-solid fa-users"></i> สมาชิก & ผู้เกี่ยวข้อง</button>
             <button class="tab-btn" data-tab="tab-budget"><i class="fa-solid fa-coins"></i> งบประมาณจัดสรร</button>
             <button class="tab-btn" data-tab="tab-gantt"><i class="fa-solid fa-chart-gantt"></i> แผนงาน Gantt & ความคืบหน้า</button>
             <button class="tab-btn" data-tab="tab-reports"><i class="fa-solid fa-file-invoice"></i> รายงานประจำเดือน</button>
@@ -445,8 +418,38 @@
           <!-- Tabs Content -->
           <div class="workspace-tabs-content">
 
+            <!-- Tab 0: Project Details -->
+            <div id="tab-details" class="tab-pane active">
+              <div class="workspace-details-grid card glassmorphism" style="padding: 1.75rem; margin-bottom: 1.5rem;">
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> รายละเอียดโครงการ</strong>
+                  <p id="ws-project-desc">รายละเอียดโครงการ...</p>
+                </div>
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-bullseye" style="color: var(--primary);"></i> วัตถุประสงค์โครงการ</strong>
+                  <p id="ws-project-objectives">-</p>
+                </div>
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-crop-simple" style="color: var(--primary);"></i> ขอบเขตโครงการ</strong>
+                  <p id="ws-project-scope">-</p>
+                </div>
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-flag" style="color: var(--primary);"></i> เป้าหมายโครงการ</strong>
+                  <p id="ws-project-targets">-</p>
+                </div>
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-chess-knight" style="color: var(--primary);"></i> ความเกี่ยวเนื่องยุทธศาสตร์องค์กร</strong>
+                  <p id="ws-project-strategic">-</p>
+                </div>
+                <div class="detail-card">
+                  <strong><i class="fa-solid fa-heart" style="color: var(--primary);"></i> ความเกี่ยวเนื่องค่านิยมองค์กร TOAT</strong>
+                  <p id="ws-project-values">-</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Tab 1: Profile & Team -->
-            <div id="tab-team" class="tab-pane active">
+            <div id="tab-team" class="tab-pane">
               <div class="team-grid">
                 <!-- Project Members (Staff) -->
                 <div class="team-section card glassmorphism">
