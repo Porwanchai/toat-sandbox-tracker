@@ -103,6 +103,122 @@ async function sendEmailNotification(to, subject, text, html) {
   }
 }
 
+// Helper: Notify Admin and Staff about new report submission
+async function notifyReportSubmission(projectId, reportMonthYear, reporterName) {
+  try {
+    const project = await dbGet('SELECT project_name FROM projects WHERE id = ?', [projectId]);
+    if (!project) return;
+
+    // Get Admin Email
+    const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
+    let adminEmail = admin ? admin.email : process.env.SMTP_USER;
+    if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
+      adminEmail = process.env.SMTP_USER;
+    }
+
+    // Send email to Admin
+    if (adminEmail) {
+      const subject = `[TOAT Sandbox] มีการส่งรายงานความคืบหน้าโครงการ: ${project.project_name}`;
+      const text = `เรียน ผู้ดูแลระบบ,\n\nโครงการ "${project.project_name}" ได้ทำการบันทึกและยื่นส่งรายงานความคืบหน้าประจำรอบเดือน ${reportMonthYear} เรียบร้อยแล้ว\n\n- ผู้รายงาน: ${reporterName}\n- สถานะ: ยื่นส่งแล้ว (Submitted)\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อทำการตรวจสอบและพิจารณาอนุมัติรายงานดังกล่าว.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+      sendEmailNotification(adminEmail, subject, text).catch(err => console.error('Failed to notify admin on report submission:', err));
+    }
+
+    // Query all staff assigned to the project
+    const assignedUsers = await dbAll(`
+      SELECT u.email, u.username FROM users u
+      JOIN project_assignments pa ON u.id = pa.user_id
+      WHERE pa.project_id = ?
+    `, [projectId]);
+
+    for (const user of assignedUsers) {
+      if (user.email && !user.email.endsWith('@toat.sandbox')) {
+        const subject = `[TOAT Sandbox] ยืนยันการส่งรายงานโครงการ: ${project.project_name}`;
+        const text = `เรียน คุณ ${user.username} (ทีมงานผู้ดูแลโครงการ),\n\nระบบได้รับข้อมูลการบันทึกและยื่นส่งรายงานความคืบหน้าประจำรอบเดือน ${reportMonthYear} ของโครงการ "${project.project_name}" เรียบร้อยแล้ว\n\n- ผู้รายงาน: ${reporterName}\n- สถานะ: ยื่นส่งแล้ว (Submitted)\n\nคุณสามารถเข้าสู่ระบบเพื่อติดตามสถานะการอนุมัติและการให้คำแนะนำของผู้บริหาร/ผู้ดูแลระบบได้ตลอดเวลา.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(user.email, subject, text).catch(err => console.error(`Failed to notify user ${user.username} on report submission:`, err));
+      }
+    }
+  } catch (error) {
+    console.error('Error in notifyReportSubmission:', error);
+  }
+}
+
+// Helper: Notify Staff about report status updates
+async function notifyReportStatusUpdate(reportId, status) {
+  try {
+    const report = await dbGet('SELECT project_id, report_month_year FROM monthly_reports WHERE id = ?', [reportId]);
+    if (!report) return;
+
+    const project = await dbGet('SELECT project_name FROM projects WHERE id = ?', [report.project_id]);
+    if (!project) return;
+
+    const statusMap = { 
+      'Approved': 'อนุมัติแล้ว (Approved)', 
+      'Submitted': 'ยื่นส่งแล้ว (Submitted)', 
+      'Draft': 'ส่งกลับมาแก้ไข (Draft/Needs Revision)' 
+    };
+    const statusText = statusMap[status] || status;
+
+    const assignedUsers = await dbAll(`
+      SELECT u.email, u.username FROM users u
+      JOIN project_assignments pa ON u.id = pa.user_id
+      WHERE pa.project_id = ?
+    `, [report.project_id]);
+
+    for (const user of assignedUsers) {
+      if (user.email && !user.email.endsWith('@toat.sandbox')) {
+        const subject = `[TOAT Sandbox] อัปเดตสถานะรายงานโครงการ: ${project.project_name}`;
+        const text = `เรียน คุณ ${user.username} (ทีมงานผู้ดูแลโครงการ),\n\nรายงานความคืบหน้าประจำรอบเดือน ${report.report_month_year} ของโครงการ "${project.project_name}" ได้รับการปรับปรุงสถานะโดยผู้ดูแลระบบ/ผู้บริหารเรียบร้อยแล้ว:\n\n- สถานะใหม่: ${statusText}\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อตรวจสอบรายละเอียดหรือข้อเสนอแนะความเห็นเพิ่มเติม.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(user.email, subject, text).catch(err => console.error(`Failed to notify user ${user.username} on status update:`, err));
+      }
+    }
+  } catch (error) {
+    console.error('Error in notifyReportStatusUpdate:', error);
+  }
+}
+
+// Helper: Notify Admin or Staff about comments added
+async function notifyCommentAdded(reportId, commenterName, commenterRole, commentText) {
+  try {
+    const report = await dbGet('SELECT project_id, report_month_year FROM monthly_reports WHERE id = ?', [reportId]);
+    if (!report) return;
+
+    const project = await dbGet('SELECT project_name FROM projects WHERE id = ?', [report.project_id]);
+    if (!project) return;
+
+    if (commenterRole === 'Admin' || commenterRole === 'Executive') {
+      // Notify staff
+      const assignedUsers = await dbAll(`
+        SELECT u.email, u.username FROM users u
+        JOIN project_assignments pa ON u.id = pa.user_id
+        WHERE pa.project_id = ?
+      `, [report.project_id]);
+
+      for (const user of assignedUsers) {
+        if (user.email && !user.email.endsWith('@toat.sandbox')) {
+          const subject = `[TOAT Sandbox] ข้อเสนอแนะใหม่ในรายงานโครงการ: ${project.project_name}`;
+          const text = `เรียน คุณ ${user.username} (ทีมงานผู้ดูแลโครงการ),\n\nคุณ ${commenterName} (${commenterRole}) ได้เพิ่มข้อเสนอแนะ/ความคิดเห็นใหม่ในรายงานประจำเดือน ${report.report_month_year} ของโครงการ "${project.project_name}":\n\n"${commentText}"\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อตรวจสอบรายละเอียดหรือตอบกลับข้อเสนอแนะ.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+          sendEmailNotification(user.email, subject, text).catch(err => console.error(`Failed to notify user ${user.username} on new comment:`, err));
+        }
+      }
+    } else {
+      // Notify Admin
+      const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
+      let adminEmail = admin ? admin.email : process.env.SMTP_USER;
+      if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
+        adminEmail = process.env.SMTP_USER;
+      }
+
+      if (adminEmail) {
+        const subject = `[TOAT Sandbox] มีการตอบกลับข้อเสนอแนะในรายงานโครงการ: ${project.project_name}`;
+        const text = `เรียน ผู้ดูแลระบบ,\n\nคุณ ${commenterName} ได้เพิ่มความคิดเห็น/ตอบกลับในรายงานประจำเดือน ${report.report_month_year} ของโครงการ "${project.project_name}":\n\n"${commentText}"\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อตรวจสอบความคิดเห็นดังกล่าว.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(adminEmail, subject, text).catch(err => console.error('Failed to notify admin on new comment:', err));
+      }
+    }
+  } catch (error) {
+    console.error('Error in notifyCommentAdded:', error);
+  }
+}
+
 // Initialize Database
 initDatabase();
 
@@ -1228,7 +1344,7 @@ app.get('/api/projects/:id/reports', requireLogin, async (req, res) => {
 // Submit/Create report
 app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Project Submitter']), upload.single('report_file'), async (req, res) => {
   const projectId = req.params.id;
-  const { id: userId, role } = req.session.user;
+  const { id: userId, role, username } = req.session.user;
   const { 
     report_month_year, 
     summary, 
@@ -1291,6 +1407,11 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
       params.push(existing.id);
 
       await dbRun(query, params);
+      
+      if (status === 'Submitted') {
+        notifyReportSubmission(projectId, report_month_year, reporter_name || username);
+      }
+      
       res.json({ message: 'Monthly report updated successfully' });
     } else {
       // Insert
@@ -1324,6 +1445,11 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
           status || 'Draft'
         ]
       );
+
+      if (status === 'Submitted') {
+        notifyReportSubmission(projectId, report_month_year, reporter_name || username);
+      }
+
       res.status(201).json({ message: 'Monthly report created successfully' });
     }
   } catch (error) {
@@ -1386,6 +1512,10 @@ app.put('/api/reports/:reportId/status', requireLogin, requireRole(['Admin', 'Ex
 
   try {
     await dbRun('UPDATE monthly_reports SET status = ? WHERE id = ?', [status, reportId]);
+    
+    // Notify staff assigned to the project about status changes
+    notifyReportStatusUpdate(reportId, status);
+    
     res.json({ message: `Report status updated to ${status}` });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1411,6 +1541,10 @@ app.post('/api/reports/:reportId/comments', requireLogin, async (req, res) => {
       'INSERT INTO report_comments (report_id, commenter_name, role, comment_text) VALUES (?, ?, ?, ?)',
       [reportId, username, role, comment_text]
     );
+    
+    // Notify appropriate users (Admin or project staff) about new comments
+    notifyCommentAdded(reportId, username, role, comment_text);
+    
     res.status(201).json({ message: 'Comment added successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
