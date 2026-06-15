@@ -17,6 +17,22 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
+// Helper: Convert uploaded file to Base64 and clean up from disk
+function fileToBase64(file) {
+  if (!file) return null;
+  try {
+    const data = fs.readFileSync(file.path);
+    const base64 = data.toString('base64');
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+    // Clean up file from disk
+    fs.unlinkSync(file.path);
+    return dataUrl;
+  } catch (err) {
+    console.error('Failed to convert file to base64:', err);
+    return null;
+  }
+}
+
 // Initialize Database
 initDatabase();
 
@@ -195,7 +211,7 @@ app.put('/api/users/profile', requireLogin, uploadUserProfilePhoto, async (req, 
     return res.status(400).json({ error: 'Email is required' });
   }
 
-  const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const photo_path = req.file ? fileToBase64(req.file) : null;
 
   try {
     if (photo_path) {
@@ -417,7 +433,7 @@ app.post('/api/projects', requireLogin, requireRole(['Admin', 'Project Submitter
     return res.status(400).json({ error: 'Project name is required' });
   }
 
-  const logo_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const logo_path = req.file ? fileToBase64(req.file) : null;
 
   try {
     const result = await dbRun(
@@ -519,7 +535,7 @@ app.put('/api/projects/:id', requireLogin, requireRole(['Admin', 'Project Submit
     return res.status(400).json({ error: 'Project name is required' });
   }
 
-  const logo_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const logo_path = req.file ? fileToBase64(req.file) : null;
 
   try {
     const canEdit = await checkProjectEditAccess(userId, role, projectId);
@@ -678,7 +694,7 @@ app.post('/api/projects/:id/members', requireLogin, requireRole(['Admin', 'Proje
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
   const { employee_id, full_name, nickname, position, division, department } = req.body;
-  const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const photo_path = req.file ? fileToBase64(req.file) : null;
 
   const employee_id_val = employee_id || '';
   const nickname_val = nickname || '';
@@ -725,7 +741,7 @@ app.put('/api/projects/:id/members/:memberId', requireLogin, requireRole(['Admin
   const memberId = req.params.memberId;
   const { id: userId, role } = req.session.user;
   const { employee_id, full_name, nickname, position, division, department } = req.body;
-  const photo_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const photo_path = req.file ? fileToBase64(req.file) : null;
 
   const employee_id_val = employee_id || '';
   const nickname_val = nickname || '';
@@ -883,8 +899,8 @@ app.post('/api/projects/:id/budgets', requireLogin, requireRole(['Admin', 'Proje
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
   const { item_name, detail, budget_type, budget_type_other, owner_unit, allocated_amount, spent_amount, payment_type, remarks } = req.body;
-  const invoice_file = (req.files && req.files['invoice']) ? '/uploads/' + req.files['invoice'][0].filename : null;
-  const approval_document = (req.files && req.files['approval_doc']) ? '/uploads/' + req.files['approval_doc'][0].filename : null;
+  const invoice_file = (req.files && req.files['invoice']) ? fileToBase64(req.files['invoice'][0]) : null;
+  const approval_document = (req.files && req.files['approval_doc']) ? fileToBase64(req.files['approval_doc'][0]) : null;
 
   if (!item_name || allocated_amount === undefined || spent_amount === undefined) {
     return res.status(400).json({ error: 'Required fields missing' });
@@ -918,7 +934,7 @@ app.delete('/api/projects/:id/budgets/:budgetId', requireLogin, requireRole(['Ad
 
     // Clean up uploaded invoice file if exists
     const budget = await dbGet('SELECT invoice_file FROM budgets WHERE id = ?', [budgetId]);
-    if (budget && budget.invoice_file) {
+    if (budget && budget.invoice_file && budget.invoice_file.startsWith('/uploads/')) {
       const filePath = path.join(__dirname, budget.invoice_file);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -938,8 +954,8 @@ app.put('/api/projects/:id/budgets/:budgetId', requireLogin, requireRole(['Admin
   const budgetId = req.params.budgetId;
   const { id: userId, role } = req.session.user;
   const { item_name, detail, budget_type, budget_type_other, owner_unit, allocated_amount, spent_amount, payment_type, remarks } = req.body;
-  const new_invoice = (req.files && req.files['invoice']) ? '/uploads/' + req.files['invoice'][0].filename : null;
-  const new_approval_doc = (req.files && req.files['approval_doc']) ? '/uploads/' + req.files['approval_doc'][0].filename : null;
+  const new_invoice = (req.files && req.files['invoice']) ? fileToBase64(req.files['invoice'][0]) : null;
+  const new_approval_doc = (req.files && req.files['approval_doc']) ? fileToBase64(req.files['approval_doc'][0]) : null;
 
   if (!item_name || allocated_amount === undefined || spent_amount === undefined) {
     return res.status(400).json({ error: 'Required fields missing' });
@@ -954,11 +970,11 @@ app.put('/api/projects/:id/budgets/:budgetId', requireLogin, requireRole(['Admin
     const final_approval_doc = new_approval_doc || (oldBudget ? oldBudget.approval_document : null);
 
     // Clean up replaced files
-    if (new_invoice && oldBudget && oldBudget.payment_evidence) {
+    if (new_invoice && oldBudget && oldBudget.payment_evidence && oldBudget.payment_evidence.startsWith('/uploads/')) {
       const fp = path.join(__dirname, 'public', oldBudget.payment_evidence);
       if (fs.existsSync(fp)) fs.unlinkSync(fp);
     }
-    if (new_approval_doc && oldBudget && oldBudget.approval_document) {
+    if (new_approval_doc && oldBudget && oldBudget.approval_document && oldBudget.approval_document.startsWith('/uploads/')) {
       const fp = path.join(__dirname, 'public', oldBudget.approval_document);
       if (fs.existsSync(fp)) fs.unlinkSync(fp);
     }
@@ -1028,7 +1044,10 @@ app.post('/api/projects/:id/gantt', requireLogin, requireRole(['Admin', 'Project
 
     let files = [];
     if (req.files) {
-      files = req.files.map(f => ({ name: f.originalname, url: '/uploads/' + f.filename }));
+      files = req.files.map(f => {
+        const url = fileToBase64(f);
+        return { name: f.originalname, url };
+      });
     }
 
     const memberId = assigned_member_id ? parseInt(assigned_member_id) : null;
@@ -1079,9 +1098,11 @@ app.delete('/api/projects/:id/gantt/:taskId', requireLogin, requireRole(['Admin'
       try {
         const files = JSON.parse(task.attachments);
         files.forEach(f => {
-          const filePath = path.join(__dirname, f.url);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          if (f.url && f.url.startsWith('/uploads/')) {
+            const filePath = path.join(__dirname, f.url);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
           }
         });
       } catch (e) {}
@@ -1128,7 +1149,7 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
     reporter_name, 
     status 
   } = req.body;
-  const report_file = req.file ? '/uploads/' + req.file.filename : null;
+  const report_file = req.file ? fileToBase64(req.file) : null;
 
   if (!report_month_year) return res.status(400).json({ error: 'Month/Year is required' });
 
