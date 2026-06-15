@@ -206,7 +206,10 @@ app.post('/api/auth/register', async (req, res) => {
     // Send email to Admin
     try {
       const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
-      const adminEmail = admin ? admin.email : process.env.SMTP_USER;
+      let adminEmail = admin ? admin.email : process.env.SMTP_USER;
+      if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
+        adminEmail = process.env.SMTP_USER;
+      }
       if (adminEmail) {
         const subject = `[TOAT Sandbox] มีผู้ลงทะเบียนใหม่รอการอนุมัติ: ${username}`;
         const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
