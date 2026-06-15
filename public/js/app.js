@@ -3587,12 +3587,16 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.emailTestResultLog.textContent += log;
     } catch (err) {
       let log = `[ERROR] ส่งอีเมลล้มเหลว!\n`;
-      log += `[DETAILS] ${err.message}\n`;
-      log += `[SUGGESTION] กรุณาตรวจสอบว่า:\n`;
-      log += `  1. ได้ตั้งค่า SMTP_USER และ SMTP_PASS ใน Environment Variables ของ Render ถูกต้องหรือไม่\n`;
-      log += `  2. SMTP_PASS ต้องเป็น "App Password" (รหัสผ่านแอป 16 ตัวอักษรสีเหลืองจากบัญชี Google) ไม่ใช่รหัสผ่าน Gmail ปกติ\n`;
-      log += `  3. นำเว้นวรรคในรหัสผ่านแอปออกทั้งหมด (เช่น xxxxxxxxxxxxxxxx)\n`;
-      log += `  4. บัญชี Google ของคุณได้เปิดใช้งานการยืนยันตัวตนแบบ 2 ขั้นตอน (2-Step Verification) แล้ว`;
+      log += `[DETAILS] ${err.message}\n\n`;
+      log += `[SUGGESTION] คำแนะนำในการแก้ไขปัญหา:\n`;
+      log += `  * กรณีใช้งานบน Render.com (ประเภทฟรี) แนะนำให้เปลี่ยนมาใช้ Brevo HTTP API (ฟรี 300 เมล/วัน):\n`;
+      log += `    1. สมัครบัญชีฟรีที่ Brevo.com\n`;
+      log += `    2. ไปที่เมนู SMTP & API เพื่อคัดลอก API Key (ขึ้นต้นด้วย xkeysib-...)\n`;
+      log += `    3. นำมาตั้งค่าใน Environment Variables ของ Render ดังนี้:\n`;
+      log += `       - BREVO_API_KEY = (คีย์ API ที่คัดลอกมา)\n`;
+      log += `       - BREVO_SENDER_EMAIL = (อีเมลส่วนตัวของคุณที่ทำการยืนยันกับ Brevo แล้ว)\n`;
+      log += `  * กรณีต้องการใช้งาน SMTP (เช่น รันแบบ Local หรืออัปเกรดเป็นโฮสต์แบบเสียเงิน):\n`;
+      log += `    1. ตรวจสอบรหัสผ่านแอป (App Password 16 ตัวอักษรแบบไม่มีเว้นวรรค) และระบุ SMTP_USER และ SMTP_PASS ใน Render ให้ถูกต้อง`;
       elements.emailTestResultLog.textContent += log;
     } finally {
       elements.adminTestEmailBtn.disabled = false;

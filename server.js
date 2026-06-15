@@ -45,13 +45,46 @@ const transporter = nodemailer.createTransport({
 
 // Helper: Send email
 async function sendEmailNotification(to, subject, text, html) {
+  // Option 1: Brevo HTTP API (Recommended for Cloud Hosting like Render)
+  if (process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL) {
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: {
+            name: process.env.BREVO_SENDER_NAME || 'TOAT Sandbox Tracker',
+            email: process.env.BREVO_SENDER_EMAIL
+          },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: html || text.replace(/\n/g, '<br>')
+        })
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.message || JSON.stringify(responseData));
+      }
+      console.log(`Email sent successfully via Brevo HTTP API: ${responseData.messageId}`);
+      return { success: true, messageId: responseData.messageId };
+    } catch (error) {
+      console.error('Failed to send email via Brevo:', error);
+      throw error;
+    }
+  }
+
+  // Option 2: Standard SMTP (for local development or paid tier)
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`\n=================== [SIMULATED EMAIL SENT] ===================`);
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     console.log(`Content: ${text}`);
     console.log(`===============================================================\n`);
-    return;
+    return { success: true, messageId: 'simulated-id' };
   }
 
   try {
@@ -63,8 +96,10 @@ async function sendEmailNotification(to, subject, text, html) {
       html: html || text.replace(/\n/g, '<br>')
     });
     console.log(`Email sent successfully: ${info.messageId}`);
+    return { success: true, messageId: info.messageId, response: info.response };
   } catch (error) {
     console.error('Failed to send email:', error);
+    throw error;
   }
 }
 
@@ -1672,36 +1707,35 @@ app.post('/api/admin/trigger-deadline-check', requireLogin, requireRole(['Admin'
   }
 });
 
-// REST API to test email configuration and get live SMTP feedback
+// REST API to test email configuration and get live SMTP/HTTP feedback
 app.post('/api/admin/test-email', requireLogin, requireRole(['Admin']), async (req, res) => {
   const { toEmail } = req.body;
   if (!toEmail) {
     return res.status(400).json({ error: 'กรุณาระบุอีเมลผู้รับ' });
   }
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  const hasBrevo = !!(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
+  const hasSMTP = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+
+  if (!hasBrevo && !hasSMTP) {
     return res.status(400).json({ 
-      error: 'ไม่พบการตั้งค่า SMTP_USER หรือ SMTP_PASS ใน Environment Variables ของเซิร์ฟเวอร์' 
+      error: 'ไม่พบการตั้งค่าช่องทางส่งอีเมล' ,
+      details: 'กรุณาตั้งค่าความปลอดภัยใน Render Environment Variables เช่น BREVO_API_KEY และ BREVO_SENDER_EMAIL (แนะนำ) หรือ SMTP_USER และ SMTP_PASS'
     });
   }
 
   try {
     const subject = `[TOAT Sandbox] อีเมลทดสอบระบบ`;
-    const text = `นี่คืออีเมลทดสอบความถูกต้องของการเชื่อมต่อ SMTP บนระบบ TOAT Sandbox Tracker\n\n- ผู้ส่ง: ${process.env.SMTP_USER}\n- เวลาส่ง: ${new Date().toLocaleString('th-TH')}\n\nหากคุณได้รับข้อความนี้ แสดงว่าการเชื่อมต่อ SMTP ทำงานได้อย่างสมบูรณ์!`;
+    const text = `นี่คืออีเมลทดสอบความถูกต้องของการส่งอีเมลบนระบบ TOAT Sandbox Tracker\n\n- ช่องทางส่ง: ${hasBrevo ? 'Brevo HTTP API (Port 443)' : 'Gmail SMTP (Port 465)'}\n- ผู้ส่ง: ${hasBrevo ? process.env.BREVO_SENDER_EMAIL : process.env.SMTP_USER}\n- เวลาส่ง: ${new Date().toLocaleString('th-TH')}\n\nหากคุณได้รับข้อความนี้ แสดงว่าการส่งอีเมลใช้งานได้อย่างสมบูรณ์!`;
     
-    const info = await transporter.sendMail({
-      from: `"TOAT Sandbox Tracker" <${process.env.SMTP_USER}>`,
-      to: toEmail,
-      subject,
-      text,
-      html: text.replace(/\n/g, '<br>')
-    });
+    const result = await sendEmailNotification(toEmail, subject, text);
 
     res.json({ 
       success: true, 
       message: 'ส่งอีเมลทดสอบเรียบร้อยแล้ว!', 
-      messageId: info.messageId, 
-      response: info.response 
+      channel: hasBrevo ? 'Brevo HTTP API' : 'Gmail SMTP',
+      messageId: result.messageId, 
+      response: result.response || 'Successfully sent via HTTP request'
     });
   } catch (error) {
     console.error('Failed to send test email:', error);
