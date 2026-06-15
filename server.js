@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
 const dbModule = require('./database');
 
 const { dbRun, dbGet, dbAll, initDatabase } = dbModule;
@@ -30,6 +31,40 @@ function fileToBase64(file) {
   } catch (err) {
     console.error('Failed to convert file to base64:', err);
     return null;
+  }
+}
+
+// Nodemailer Transporter Configuration (for Gmail)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// Helper: Send email
+async function sendEmailNotification(to, subject, text, html) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.log(`\n=================== [SIMULATED EMAIL SENT] ===================`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Content: ${text}`);
+    console.log(`===============================================================\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"TOAT Sandbox Tracker" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      text,
+      html: html || text.replace(/\n/g, '<br>')
+    });
+    console.log(`Email sent successfully: ${info.messageId}`);
+  } catch (error) {
+    console.error('Failed to send email:', error);
   }
 }
 
@@ -167,6 +202,20 @@ app.post('/api/auth/register', async (req, res) => {
     await dbRun('INSERT INTO users (username, email, password_hash, role, employee_id, division, department, line_id, phone_number, is_approved, allowed_views) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)', [
       username, email, hash, role, employee_id, division, department, line_id, phone_number, 'dashboard,projects-list'
     ]);
+
+    // Send email to Admin
+    try {
+      const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
+      const adminEmail = admin ? admin.email : process.env.SMTP_USER;
+      if (adminEmail) {
+        const subject = `[TOAT Sandbox] มีผู้ลงทะเบียนใหม่รอการอนุมัติ: ${username}`;
+        const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(adminEmail, subject, text);
+      }
+    } catch (err) {
+      console.error('Failed to notify admin about new user registration:', err);
+    }
+
     res.status(201).json({ message: 'ลงทะเบียนสำเร็จ รอผู้ดูแลระบบ (Admin) อนุมัติสิทธิ์เข้าใช้งาน' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -194,8 +243,12 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'No account found with this email' });
     }
-    // Simulate recovery link
-    console.log(`[PASSWORD RECOVERY SIMULATION] Recovery link sent to ${email} for user: ${user.username}`);
+    
+    // Send password recovery link email
+    const subject = `[TOAT Sandbox] คำขอกู้คืนรหัสผ่านของคุณ`;
+    const text = `เรียน คุณ ${user.username},\n\nคุณได้ร้องขอลิงก์สำหรับกู้คืนรหัสผ่านในระบบ TOAT Sandbox Tracker\n\nสามารถใช้ข้อมูลบัญชีผู้ใช้หรือเข้าสู่ระบบเพื่อแก้ไขโปรไฟล์/เปลี่ยนรหัสผ่านในภายหลัง หรือหากระบบออนไลน์ต้องการรีเซ็ตกรุณาติดต่อแอดมินโดยตรง\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+    await sendEmailNotification(email, subject, text);
+
     res.json({ message: 'Password recovery link has been sent to your email.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1354,7 +1407,17 @@ app.get('/api/admin/pending-users', requireLogin, requireRole(['Admin']), async 
 app.put('/api/admin/users/:userId/approve', requireLogin, requireRole(['Admin']), async (req, res) => {
   const userId = req.params.userId;
   try {
+    const user = await dbGet('SELECT username, email FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'ไม่พบผู้ใช้นี้ในระบบ' });
+    }
     await dbRun('UPDATE users SET is_approved = 1 WHERE id = ?', [userId]);
+
+    // Send approval notification email
+    const subject = `[TOAT Sandbox] บัญชีผู้ใช้ของคุณได้รับการอนุมัติสิทธิ์เข้าใช้งานแล้ว`;
+    const text = `เรียน คุณ ${user.username},\n\nบัญชีผู้ใช้ของคุณได้รับการอนุมัติสิทธิ์การเข้าใช้งานระบบ TOAT Sandbox Tracker จากผู้ดูแลระบบเรียบร้อยแล้ว\n\nคุณสามารถลงชื่อเข้าใช้งานระบบได้ทันที\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+    sendEmailNotification(user.email, subject, text);
+
     res.json({ message: 'อนุมัติสิทธิ์เข้าใช้งานสำเร็จ' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1365,6 +1428,13 @@ app.put('/api/admin/users/:userId/approve', requireLogin, requireRole(['Admin'])
 app.delete('/api/admin/users/:userId', requireLogin, requireRole(['Admin']), async (req, res) => {
   const userId = req.params.userId;
   try {
+    const user = await dbGet('SELECT username, email, is_approved FROM users WHERE id = ?', [userId]);
+    if (user && user.is_approved === 0) {
+      // Send rejection notification email
+      const subject = `[TOAT Sandbox] บัญชีผู้ใช้ของคุณไม่ผ่านการอนุมัติสิทธิ์เข้าใช้งาน`;
+      const text = `เรียน คุณ ${user.username},\n\nคำขอสมัครบัญชีผู้ใช้ระบบ TOAT Sandbox Tracker ของคุณ ไม่ผ่านการอนุมัติสิทธิ์การเข้าใช้งานจากผู้ดูแลระบบ\n\nหากคุณเชื่อว่าเป็นความผิดพลาด กรุณาติดต่อผู้ดูแลระบบโดยตรง\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+      sendEmailNotification(user.email, subject, text);
+    }
     await dbRun('DELETE FROM users WHERE id = ?', [userId]);
     res.json({ message: 'ปฏิเสธสิทธิ์และลบผู้ใช้งานสำเร็จ' });
   } catch (error) {
@@ -1572,12 +1642,10 @@ async function runDeadlineCheck() {
           // In-App Notification
           await dbRun('INSERT INTO notifications (user_id, message) VALUES (?, ?)', [user.id, msg]);
           
-          // Simulated Email Trigger
-          console.log(`\n=================== [SIMULATED EMAIL SENT] ===================`);
-          console.log(`To: ${user.email} (${user.username})`);
-          console.log(`Subject: [TOAT Sandbox] แจ้งเตือนด่วน: กรุณาส่งรายงานประจำเดือนรอบ ${reportMonthYear}`);
-          console.log(`Body:\nเรียนคุณ ${user.username},\n\nโครงการ "${project.project_name}" ที่อยู่ในความดูแลของคุณยังไม่ได้รับการยื่นส่งรายงานสำหรับรอบการทำงานประจำเดือน ${reportMonthYear} ซึ่งผ่านกำหนดเวลาส่ง (วันที่ ${deadlineDay} ของเดือนนี้) เรียบร้อยแล้ว\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อทำการสรุปข้อมูลโครงการและกดส่งรายงานโดยด่วนที่สุด\n\nขอแสดงความนับถือ,\nฝ่ายบริหารโครงการ TOAT Sandbox`);
-          console.log(`============================================================\n`);
+          // Email Notification
+          const subject = `[TOAT Sandbox] แจ้งเตือนด่วน: กรุณาส่งรายงานประจำเดือนรอบ ${reportMonthYear}`;
+          const text = `เรียนคุณ ${user.username},\n\nโครงการ "${project.project_name}" ที่อยู่ในความดูแลของคุณยังไม่ได้รับการยื่นส่งรายงานสำหรับรอบการทำงานประจำเดือน ${reportMonthYear} ซึ่งผ่านกำหนดเวลาส่ง (วันที่ ${deadlineDay} ของเดือนนี้) เรียบร้อยแล้ว\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อทำการสรุปข้อมูลโครงการและกดส่งรายงานโดยด่วนที่สุด\n\nขอแสดงความนับถือ,\nฝ่ายบริหารโครงการ TOAT Sandbox`;
+          await sendEmailNotification(user.email, subject, text);
           
           alertCount++;
         }
