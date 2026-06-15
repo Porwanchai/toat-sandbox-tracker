@@ -312,13 +312,7 @@ app.get('/api/projects/stats', requireLogin, async (req, res) => {
     `;
     let queryParams = [];
 
-    if (role === 'Project Submitter') {
-      budgetQuery += ` AND b.project_id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)`;
-      statusQuery += ` AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?) GROUP BY p.status`;
-      queryParams = [userId];
-    } else {
-      statusQuery += ` GROUP BY p.status`;
-    }
+    statusQuery += ` GROUP BY p.status`;
 
     const budgetStats = await dbGet(budgetQuery, queryParams);
     const statusCounts = await dbAll(statusQuery, queryParams);
