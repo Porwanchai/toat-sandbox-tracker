@@ -135,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
     adminDeadlineForm: document.getElementById('admin-deadline-form'),
     adminManualTriggerBtn: document.getElementById('admin-manual-trigger-btn'),
     triggerResultLog: document.getElementById('trigger-result-log'),
+    adminTestEmailInput: document.getElementById('admin-test-email-input'),
+    adminTestEmailBtn: document.getElementById('admin-test-email-btn'),
+    emailTestResultLog: document.getElementById('email-test-result-log'),
     assignProjectId: document.getElementById('assign-project-id'),
     assignUserId: document.getElementById('assign-user-id'),
     adminAssignForm: document.getElementById('admin-assign-form'),
@@ -3560,6 +3563,39 @@ document.addEventListener('DOMContentLoaded', () => {
       loadNotifications();
     } catch (err) {
       elements.triggerResultLog.textContent += `[ERROR] เกิดความล้มเหลว: ${err.message}`;
+    }
+  });
+
+  // Test SMTP Email Configuration
+  elements.adminTestEmailBtn.addEventListener('click', async () => {
+    const toEmail = elements.adminTestEmailInput.value.trim();
+    if (!toEmail) {
+      alert('กรุณากรอกอีเมลผู้รับทดสอบ');
+      return;
+    }
+
+    elements.emailTestResultLog.classList.remove('hidden');
+    elements.emailTestResultLog.textContent = `[SYSTEM] เริ่มทดสอบการส่งอีเมลไปยัง: ${toEmail}...\n`;
+    elements.adminTestEmailBtn.disabled = true;
+
+    try {
+      const data = await API.admin.testEmail(toEmail);
+      let log = `[SUCCESS] ส่งอีเมลสำเร็จ!\n`;
+      log += `[INFO] Message ID: ${data.messageId}\n`;
+      log += `[INFO] SMTP Response: ${data.response}\n`;
+      log += `[INFO] กรุณาตรวจสอบในกล่องจดหมายเข้า (Inbox) หรือโฟลเดอร์จดหมายขยะ (Spam/Junk)`;
+      elements.emailTestResultLog.textContent += log;
+    } catch (err) {
+      let log = `[ERROR] ส่งอีเมลล้มเหลว!\n`;
+      log += `[DETAILS] ${err.message}\n`;
+      log += `[SUGGESTION] กรุณาตรวจสอบว่า:\n`;
+      log += `  1. ได้ตั้งค่า SMTP_USER และ SMTP_PASS ใน Environment Variables ของ Render ถูกต้องหรือไม่\n`;
+      log += `  2. SMTP_PASS ต้องเป็น "App Password" (รหัสผ่านแอป 16 ตัวอักษรสีเหลืองจากบัญชี Google) ไม่ใช่รหัสผ่าน Gmail ปกติ\n`;
+      log += `  3. นำเว้นวรรคในรหัสผ่านแอปออกทั้งหมด (เช่น xxxxxxxxxxxxxxxx)\n`;
+      log += `  4. บัญชี Google ของคุณได้เปิดใช้งานการยืนยันตัวตนแบบ 2 ขั้นตอน (2-Step Verification) แล้ว`;
+      elements.emailTestResultLog.textContent += log;
+    } finally {
+      elements.adminTestEmailBtn.disabled = false;
     }
   });
 

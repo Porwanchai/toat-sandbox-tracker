@@ -1672,6 +1672,48 @@ app.post('/api/admin/trigger-deadline-check', requireLogin, requireRole(['Admin'
   }
 });
 
+// REST API to test email configuration and get live SMTP feedback
+app.post('/api/admin/test-email', requireLogin, requireRole(['Admin']), async (req, res) => {
+  const { toEmail } = req.body;
+  if (!toEmail) {
+    return res.status(400).json({ error: 'กรุณาระบุอีเมลผู้รับ' });
+  }
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return res.status(400).json({ 
+      error: 'ไม่พบการตั้งค่า SMTP_USER หรือ SMTP_PASS ใน Environment Variables ของเซิร์ฟเวอร์' 
+    });
+  }
+
+  try {
+    const subject = `[TOAT Sandbox] อีเมลทดสอบระบบ`;
+    const text = `นี่คืออีเมลทดสอบความถูกต้องของการเชื่อมต่อ SMTP บนระบบ TOAT Sandbox Tracker\n\n- ผู้ส่ง: ${process.env.SMTP_USER}\n- เวลาส่ง: ${new Date().toLocaleString('th-TH')}\n\nหากคุณได้รับข้อความนี้ แสดงว่าการเชื่อมต่อ SMTP ทำงานได้อย่างสมบูรณ์!`;
+    
+    const info = await transporter.sendMail({
+      from: `"TOAT Sandbox Tracker" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject,
+      text,
+      html: text.replace(/\n/g, '<br>')
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'ส่งอีเมลทดสอบเรียบร้อยแล้ว!', 
+      messageId: info.messageId, 
+      response: info.response 
+    });
+  } catch (error) {
+    console.error('Failed to send test email:', error);
+    res.status(500).json({ 
+      error: 'ส่งอีเมลทดสอบล้มเหลว', 
+      details: error.message, 
+      code: error.code,
+      stack: error.stack
+    });
+  }
+});
+
 // Background Cron-like Scheduler (runs every 12 hours)
 setInterval(runDeadlineCheck, 12 * 60 * 60 * 1000);
 

@@ -896,6 +896,26 @@
 
               <hr class="card-divider">
 
+              <!-- Email Configuration Test Panel -->
+              <div class="automation-test-box">
+                <h4><i class="fa-solid fa-envelope"></i> ทดสอบการส่งอีเมลจริง (Test Email Integration)</h4>
+                <p>ป้อนอีเมลที่ต้องการรับจดหมายทดสอบ เพื่อทดสอบการทำงานของ SMTP (เช่น Gmail และ App Password) ระบบจะส่งข้อความทดสอบและแสดงผลรายงานความสำเร็จหรือข้อผิดพลาดแบบสด ๆ ด้านล่าง</p>
+                <div class="form-group">
+                  <label for="admin-test-email-input">อีเมลผู้รับทดสอบ:</label>
+                  <div class="input-inline-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="email" id="admin-test-email-input" placeholder="เช่น admin@gmail.com" style="flex: 1; min-width: 0;">
+                    <button class="btn btn-info" id="admin-test-email-btn" type="button" style="white-space: nowrap;">
+                      <i class="fa-solid fa-paper-plane"></i> ส่งอีเมลทดสอบ
+                    </button>
+                  </div>
+                </div>
+                <div id="email-test-result-log" class="trigger-log hidden">
+                  <!-- Output logs -->
+                </div>
+              </div>
+
+              <hr class="card-divider">
+
               <!-- Assignment mapping user to project -->
               <div class="project-assign-box">
                 <h4><i class="fa-solid fa-link"></i> มอบหมายโครงการให้ทีมงาน Staff รับผิดชอบ</h4>

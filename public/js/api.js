@@ -385,6 +385,19 @@ const API = {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to trigger scanner');
       return data;
+    },
+    async testEmail(toEmail) {
+      const res = await fetch('/api/admin/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errMsg = data.details ? `${data.error} (${data.details})` : (data.error || 'Failed to send test email');
+        throw new Error(errMsg);
+      }
+      return data;
     }
   },
 
