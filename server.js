@@ -103,24 +103,48 @@ async function sendEmailNotification(to, subject, text, html) {
   }
 }
 
+// Helper: Get all Admin emails (or fallback to SMTP_USER if sandbox)
+async function getAdminEmails() {
+  try {
+    const admins = await dbAll("SELECT email FROM users WHERE role = 'Admin'");
+    const adminEmails = [];
+    for (const admin of admins) {
+      if (admin.email) {
+        if (admin.email.endsWith('@toat.sandbox')) {
+          if (process.env.SMTP_USER && !adminEmails.includes(process.env.SMTP_USER)) {
+            adminEmails.push(process.env.SMTP_USER);
+          }
+        } else {
+          if (!adminEmails.includes(admin.email)) {
+            adminEmails.push(admin.email);
+          }
+        }
+      }
+    }
+    if (adminEmails.length === 0 && process.env.SMTP_USER) {
+      adminEmails.push(process.env.SMTP_USER);
+    }
+    return adminEmails;
+  } catch (error) {
+    console.error('Error in getAdminEmails:', error);
+    return process.env.SMTP_USER ? [process.env.SMTP_USER] : [];
+  }
+}
+
 // Helper: Notify Admin and Staff about new report submission
 async function notifyReportSubmission(projectId, reportMonthYear, reporterName) {
   try {
     const project = await dbGet('SELECT project_name FROM projects WHERE id = ?', [projectId]);
     if (!project) return;
 
-    // Get Admin Email
-    const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
-    let adminEmail = admin ? admin.email : process.env.SMTP_USER;
-    if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
-      adminEmail = process.env.SMTP_USER;
-    }
+    // Get all Admin Emails
+    const adminEmails = await getAdminEmails();
 
-    // Send email to Admin
-    if (adminEmail) {
+    // Send email to all Admins
+    for (const adminEmail of adminEmails) {
       const subject = `[TOAT Sandbox] มีการส่งรายงานความคืบหน้าโครงการ: ${project.project_name}`;
       const text = `เรียน ผู้ดูแลระบบ,\n\nโครงการ "${project.project_name}" ได้ทำการบันทึกและยื่นส่งรายงานความคืบหน้าประจำรอบเดือน ${reportMonthYear} เรียบร้อยแล้ว\n\n- ผู้รายงาน: ${reporterName}\n- สถานะ: ยื่นส่งแล้ว (Submitted)\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อทำการตรวจสอบและพิจารณาอนุมัติรายงานดังกล่าว.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
-      sendEmailNotification(adminEmail, subject, text).catch(err => console.error('Failed to notify admin on report submission:', err));
+      sendEmailNotification(adminEmail, subject, text).catch(err => console.error(`Failed to notify admin ${adminEmail} on report submission:`, err));
     }
 
     // Query all staff assigned to the project
@@ -201,17 +225,13 @@ async function notifyCommentAdded(reportId, commenterName, commenterRole, commen
         }
       }
     } else {
-      // Notify Admin
-      const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
-      let adminEmail = admin ? admin.email : process.env.SMTP_USER;
-      if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
-        adminEmail = process.env.SMTP_USER;
-      }
+      // Notify all Admins
+      const adminEmails = await getAdminEmails();
 
-      if (adminEmail) {
+      for (const adminEmail of adminEmails) {
         const subject = `[TOAT Sandbox] มีการตอบกลับข้อเสนอแนะในรายงานโครงการ: ${project.project_name}`;
         const text = `เรียน ผู้ดูแลระบบ,\n\nคุณ ${commenterName} ได้เพิ่มความคิดเห็น/ตอบกลับในรายงานประจำเดือน ${report.report_month_year} ของโครงการ "${project.project_name}":\n\n"${commentText}"\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อตรวจสอบความคิดเห็นดังกล่าว.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
-        sendEmailNotification(adminEmail, subject, text).catch(err => console.error('Failed to notify admin on new comment:', err));
+        sendEmailNotification(adminEmail, subject, text).catch(err => console.error(`Failed to notify admin ${adminEmail} on new comment:`, err));
       }
     }
   } catch (error) {
@@ -354,17 +374,14 @@ app.post('/api/auth/register', async (req, res) => {
       username, email, hash, role, employee_id, division, department, line_id, phone_number, 'dashboard,projects-list'
     ]);
 
-    // Send email to Admin
+    // Send email to all Admins
     try {
-      const admin = await dbGet("SELECT email FROM users WHERE role = 'Admin' ORDER BY id ASC LIMIT 1");
-      let adminEmail = admin ? admin.email : process.env.SMTP_USER;
-      if (adminEmail && adminEmail.endsWith('@toat.sandbox')) {
-        adminEmail = process.env.SMTP_USER;
-      }
-      if (adminEmail) {
-        const subject = `[TOAT Sandbox] มีผู้ลงทะเบียนใหม่รอการอนุมัติ: ${username}`;
-        const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
-        sendEmailNotification(adminEmail, subject, text);
+      const adminEmails = await getAdminEmails();
+      const subject = `[TOAT Sandbox] มีผู้ลงทะเบียนใหม่รอการอนุมัติ: ${username}`;
+      const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+      
+      for (const adminEmail of adminEmails) {
+        sendEmailNotification(adminEmail, subject, text).catch(err => console.error(`Failed to notify admin ${adminEmail} about new user registration:`, err));
       }
     } catch (err) {
       console.error('Failed to notify admin about new user registration:', err);
