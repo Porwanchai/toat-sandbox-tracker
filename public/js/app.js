@@ -2607,17 +2607,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Group tasks by main_task
-    const groups = {};
+    // Group tasks by main_task
+    const taskGroups = {};
     tasks.forEach(t => {
-      if (!groups[t.main_task]) {
-        groups[t.main_task] = [];
+      if (!taskGroups[t.main_task]) {
+        taskGroups[t.main_task] = [];
       }
-      groups[t.main_task].push(t);
+      taskGroups[t.main_task].push(t);
     });
 
     // 2. Draw Rows
-    Object.keys(groups).forEach(mainTaskName => {
-      const groupTasks = groups[mainTaskName];
+    Object.keys(taskGroups).forEach(mainTaskName => {
+      const groupTasks = taskGroups[mainTaskName];
 
       // Draw Main Task Group Header Row (No bar)
       const headerRow = document.createElement('div');
