@@ -165,6 +165,11 @@ async function initDatabase() {
       report_month_year TEXT NOT NULL, -- YYYY-MM
       summary TEXT,
       issues_and_solutions TEXT,
+      activities_planned TEXT,
+      activities_unplanned TEXT,
+      issues_obstacles TEXT,
+      solutions TEXT,
+      reporter_name TEXT,
       report_file TEXT,
       submitted_at DATETIME,
       status TEXT CHECK(status IN ('Draft', 'Submitted', 'Approved')) NOT NULL DEFAULT 'Draft',
@@ -299,6 +304,24 @@ async function initDatabase() {
     const usersColsLatest = await dbAll("PRAGMA table_info(users)");
     if (!usersColsLatest.some(c => c.name === 'photo_path')) {
       await dbRun("ALTER TABLE users ADD COLUMN photo_path TEXT");
+    }
+
+    // 18. Run Migrations for Monthly Reports new columns
+    const reportColsLatest = await dbAll("PRAGMA table_info(monthly_reports)");
+    if (!reportColsLatest.some(c => c.name === 'activities_planned')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN activities_planned TEXT");
+    }
+    if (!reportColsLatest.some(c => c.name === 'activities_unplanned')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN activities_unplanned TEXT");
+    }
+    if (!reportColsLatest.some(c => c.name === 'issues_obstacles')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN issues_obstacles TEXT");
+    }
+    if (!reportColsLatest.some(c => c.name === 'solutions')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN solutions TEXT");
+    }
+    if (!reportColsLatest.some(c => c.name === 'reporter_name')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN reporter_name TEXT");
     }
 
     console.log('All database tables initialized.');

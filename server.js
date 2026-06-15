@@ -1123,7 +1123,17 @@ app.get('/api/projects/:id/reports', requireLogin, async (req, res) => {
 app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Project Submitter']), upload.single('report_file'), async (req, res) => {
   const projectId = req.params.id;
   const { id: userId, role } = req.session.user;
-  const { report_month_year, summary, issues_and_solutions, status } = req.body;
+  const { 
+    report_month_year, 
+    summary, 
+    issues_and_solutions, 
+    activities_planned, 
+    activities_unplanned, 
+    issues_obstacles, 
+    solutions, 
+    reporter_name, 
+    status 
+  } = req.body;
   const report_file = req.file ? '/uploads/' + req.file.filename : null;
 
   if (!report_month_year) return res.status(400).json({ error: 'Month/Year is required' });
@@ -1134,13 +1144,35 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
 
     const submitted_at = status === 'Submitted' ? new Date().toISOString() : null;
 
+    // Create a composite string for issues_and_solutions to maintain backward compatibility
+    const issues_and_solutions_composite = issues_obstacles 
+      ? `${issues_obstacles}${solutions ? '\n\nแนวทางแก้ไข:\n' + solutions : ''}` 
+      : (issues_and_solutions || '');
+
     // Check if report already exists (since project_id + month is unique)
     const existing = await dbGet('SELECT id FROM monthly_reports WHERE project_id = ? AND report_month_year = ?', [projectId, report_month_year]);
     
     if (existing) {
       // Update
-      let query = `UPDATE monthly_reports SET summary = ?, issues_and_solutions = ?, status = ?`;
-      let params = [summary, issues_and_solutions, status];
+      let query = `UPDATE monthly_reports SET 
+        summary = ?, 
+        issues_and_solutions = ?, 
+        activities_planned = ?, 
+        activities_unplanned = ?, 
+        issues_obstacles = ?, 
+        solutions = ?, 
+        reporter_name = ?, 
+        status = ?`;
+      let params = [
+        summary, 
+        issues_and_solutions_composite, 
+        activities_planned, 
+        activities_unplanned, 
+        issues_obstacles, 
+        solutions, 
+        reporter_name, 
+        status
+      ];
       if (report_file) {
         query += `, report_file = ?`;
         params.push(report_file);
@@ -1157,9 +1189,34 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
     } else {
       // Insert
       await dbRun(
-        `INSERT INTO monthly_reports (project_id, report_month_year, summary, issues_and_solutions, report_file, submitted_at, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [projectId, report_month_year, summary, issues_and_solutions, report_file, submitted_at, status || 'Draft']
+        `INSERT INTO monthly_reports (
+          project_id, 
+          report_month_year, 
+          summary, 
+          issues_and_solutions, 
+          activities_planned, 
+          activities_unplanned, 
+          issues_obstacles, 
+          solutions, 
+          reporter_name, 
+          report_file, 
+          submitted_at, 
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          projectId, 
+          report_month_year, 
+          summary, 
+          issues_and_solutions_composite, 
+          activities_planned, 
+          activities_unplanned, 
+          issues_obstacles, 
+          solutions, 
+          reporter_name, 
+          report_file, 
+          submitted_at, 
+          status || 'Draft'
+        ]
       );
       res.status(201).json({ message: 'Monthly report created successfully' });
     }

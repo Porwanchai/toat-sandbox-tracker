@@ -2813,6 +2813,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadReportsTab(pid) {
     try {
       const reports = await API.reports.list(pid);
+      state.activeProjectReports = reports;
       elements.wsReportsTableBody.innerHTML = '';
 
       if (reports.length === 0) {
@@ -2855,8 +2856,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Helper to auto-populate report form when month changes
+  async function populateReportFormForMonth(monthVal) {
+    if (!state.activeProjectReports) return;
+    const existing = state.activeProjectReports.find(r => r.report_month_year === monthVal);
+    
+    const summaryInput = document.getElementById('rep-summary-input');
+    const plannedInput = document.getElementById('rep-activities-planned-input');
+    const unplannedInput = document.getElementById('rep-activities-unplanned-input');
+    const issuesInput = document.getElementById('rep-issues-input');
+    const solutionsInput = document.getElementById('rep-solutions-input');
+    const reporterInput = document.getElementById('rep-reporter-input');
+    const statusInput = document.getElementById('rep-status-input');
+    const fileInput = document.getElementById('rep-file-input');
+
+    if (fileInput) fileInput.value = ''; // Always reset file input
+
+    if (existing) {
+      if (summaryInput) summaryInput.value = existing.summary || '';
+      if (plannedInput) plannedInput.value = existing.activities_planned || '';
+      if (unplannedInput) unplannedInput.value = existing.activities_unplanned || '';
+      if (issuesInput) issuesInput.value = existing.issues_obstacles || '';
+      if (solutionsInput) solutionsInput.value = existing.solutions || '';
+      if (reporterInput) reporterInput.value = existing.reporter_name || '';
+      if (statusInput) statusInput.value = existing.status || 'Draft';
+    } else {
+      // Clear inputs to blank for new report
+      if (summaryInput) summaryInput.value = '';
+      if (plannedInput) plannedInput.value = '';
+      if (unplannedInput) unplannedInput.value = '';
+      if (issuesInput) issuesInput.value = '';
+      if (solutionsInput) solutionsInput.value = '';
+      if (reporterInput) reporterInput.value = '';
+      if (statusInput) statusInput.value = 'Draft';
+    }
+  }
+
+  // Bind change event to rep-month-input
+  const repMonthInput = document.getElementById('rep-month-input');
+  if (repMonthInput) {
+    repMonthInput.addEventListener('change', (e) => {
+      populateReportFormForMonth(e.target.value);
+    });
+  }
+
   // Create monthly report trigger
-  elements.createMonthlyReportBtn.addEventListener('click', () => {
+  elements.createMonthlyReportBtn.addEventListener('click', async () => {
     elements.formCreateMonthlyReport.reset();
     
     // Default select current previous month
@@ -2868,14 +2913,59 @@ document.addEventListener('DOMContentLoaded', () => {
       y -= 1;
     }
     const val = `${y}-${String(m).padStart(2, '0')}`;
-    document.getElementById('rep-month-input').value = val;
+    const repMonthInput = document.getElementById('rep-month-input');
+    if (repMonthInput) repMonthInput.value = val;
+
+    // Load reporter options dynamically from project members
+    const reporterSelect = document.getElementById('rep-reporter-input');
+    if (reporterSelect) {
+      reporterSelect.innerHTML = '<option value="">-- เลือกผู้รายงานผล --</option>';
+      try {
+        const members = await API.members.list(state.activeProjectId);
+        members.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.full_name;
+          opt.textContent = `${m.full_name} (${m.position || 'ไม่มีระบุตำแหน่ง'})`;
+          reporterSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Failed to load project members for reporter select:', err);
+      }
+    }
+
+    // Populate form if this month already has a report
+    await populateReportFormForMonth(val);
+    
     elements.modalCreateMonthlyReport.showModal();
   });
 
   elements.formCreateMonthlyReport.addEventListener('submit', async (e) => {
     e.preventDefault();
     const pid = state.activeProjectId;
-    const formData = new FormData(elements.formCreateMonthlyReport);
+    const formData = new FormData();
+
+    const month = document.getElementById('rep-month-input')?.value || '';
+    const summary = document.getElementById('rep-summary-input')?.value || '';
+    const activitiesPlanned = document.getElementById('rep-activities-planned-input')?.value || '';
+    const activitiesUnplanned = document.getElementById('rep-activities-unplanned-input')?.value || '';
+    const issues = document.getElementById('rep-issues-input')?.value || '';
+    const solutions = document.getElementById('rep-solutions-input')?.value || '';
+    const reporter = document.getElementById('rep-reporter-input')?.value || '';
+    const status = document.getElementById('rep-status-input')?.value || 'Draft';
+    const fileInput = document.getElementById('rep-file-input');
+
+    formData.append('report_month_year', month);
+    formData.append('summary', summary);
+    formData.append('activities_planned', activitiesPlanned);
+    formData.append('activities_unplanned', activitiesUnplanned);
+    formData.append('issues_obstacles', issues);
+    formData.append('solutions', solutions);
+    formData.append('reporter_name', reporter);
+    formData.append('status', status);
+
+    if (fileInput && fileInput.files[0]) {
+      formData.append('report_file', fileInput.files[0]);
+    }
 
     try {
       await API.reports.add(pid, formData);
@@ -2915,9 +3005,23 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.repStatus.className = `badge ${repStatusClass}`;
       elements.repStatus.textContent = data.report.status;
 
+      // Render reporter info
+      const reporterMeta = document.getElementById('rep-reporter-meta');
+      const signReporterName = document.getElementById('rep-sign-reporter-name');
+      if (reporterMeta) reporterMeta.textContent = data.report.reporter_name || 'ไม่ระบุผู้รายงาน';
+      if (signReporterName) signReporterName.textContent = data.report.reporter_name || 'ผู้รับผิดชอบโครงการประจำ TOAT Sandbox';
+
       // Text blocks
       elements.repSummaryText.textContent = data.report.summary || 'ไม่มีข้อความสรุปการดำเนินงาน';
-      elements.repIssuesText.textContent = data.report.issues_and_solutions || 'ไม่มีปัญหาและแนวทางการแก้ไขที่ได้รับแจ้ง';
+      
+      const plannedText = document.getElementById('rep-activities-planned-text');
+      const unplannedText = document.getElementById('rep-activities-unplanned-text');
+      const solutionsText = document.getElementById('rep-solutions-text');
+      
+      if (plannedText) plannedText.textContent = data.report.activities_planned || 'ไม่มีกิจกรรมดำเนินได้ตามแผน';
+      if (unplannedText) unplannedText.textContent = data.report.activities_unplanned || 'ไม่มีกิจกรรมที่ไม่สามารถดำเนินงานได้';
+      elements.repIssuesText.textContent = data.report.issues_obstacles || 'ไม่มีปัญหา อุปสรรค';
+      if (solutionsText) solutionsText.textContent = data.report.solutions || 'ไม่มีแนวทางแก้ปัญหา';
 
       // Budget tables
       elements.repBudgetAllocated.textContent = formatTHB(data.budgets.total_allocated);

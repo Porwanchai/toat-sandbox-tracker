@@ -672,6 +672,7 @@
                 <div><span>รอบรายงานประจำเดือน:</span> <strong id="rep-month-year">...</strong></div>
                 <div><span>สถานะความคืบหน้าโครงการ:</span> <span class="badge" id="rep-proj-status">...</span></div>
                 <div><span>อัตราความคืบหน้ารวม:</span> <strong id="rep-proj-progress">0%</strong></div>
+                <div><span>ผู้รายงานผล:</span> <strong id="rep-reporter-meta">...</strong></div>
                 <div><span>วันเวลาที่นำส่งรายงาน:</span> <span id="rep-submitted-at">...</span></div>
                 <div><span>สถานะรายงาน:</span> <span class="badge" id="rep-status">...</span></div>
               </div>
@@ -683,12 +684,27 @@
               </div>
 
               <div class="report-section">
-                <h4>2. ปัญหา อุปสรรค และแนวทางการแก้ไข (Issues & Solutions)</h4>
+                <h4>2. กิจกรรมที่ดำเนินได้ตามแผน (Activities Achieved as Planned)</h4>
+                <div class="report-text-block" id="rep-activities-planned-text">...</div>
+              </div>
+
+              <div class="report-section">
+                <h4>3. กิจกรรมที่ไม่สามารถดำเนินงานได้ (Activities Not Achieved)</h4>
+                <div class="report-text-block" id="rep-activities-unplanned-text">...</div>
+              </div>
+
+              <div class="report-section">
+                <h4>4. ปัญหา อุปสรรค (Issues & Obstacles)</h4>
                 <div class="report-text-block" id="rep-issues-text">...</div>
               </div>
 
               <div class="report-section">
-                <h4>3. รายงานสรุปสถานะงบประมาณโครงการ (Project Budget Summary)</h4>
+                <h4>5. แนวทางการแก้ไขปัญหา (Solutions)</h4>
+                <div class="report-text-block" id="rep-solutions-text">...</div>
+              </div>
+
+              <div class="report-section">
+                <h4>6. รายงานสรุปสถานะงบประมาณโครงการ (Project Budget Summary)</h4>
                 
                 <!-- Rollup Summary Table -->
                 <table class="report-table" style="margin-bottom: 1rem;">
@@ -737,7 +753,7 @@
               </div>
 
               <div class="report-section" id="rep-attachment-section">
-                <h4>4. ลิงก์เอกสารแนบประกอบรายงาน (Attachments)</h4>
+                <h4>7. ลิงก์เอกสารแนบประกอบรายงาน (Attachments)</h4>
                 <div id="rep-attachment-link">ไม่มีเอกสารแนบ</div>
               </div>
 
@@ -745,7 +761,7 @@
               <div class="report-signature-block">
                 <div class="signature-line">
                   <p>ลงชื่อ............................................................ ผู้รายงาน</p>
-                  <p>( ผู้รับผิดชอบโครงการประจำ TOAT Sandbox )</p>
+                  <p>( <span id="rep-sign-reporter-name">ผู้รับผิดชอบโครงการประจำ TOAT Sandbox</span> )</p>
                 </div>
                 <div class="signature-line">
                   <p>ลงชื่อ............................................................ ผู้อนุมัติ</p>
@@ -1325,17 +1341,37 @@
           <textarea id="rep-summary-input" required placeholder="อธิบายงานที่ทำสำเร็จ สัดส่วนงานที่คืบหน้า..." rows="4"></textarea>
         </div>
         <div class="form-group">
-          <label for="rep-issues-input">ปัญหา อุปสรรค และแนวทางการแก้ปัญหาที่เกิดขึ้น (Issues & Solutions):</label>
-          <textarea id="rep-issues-input" placeholder="เช่น การขนส่งสินค้าล่าช้า ส่งทีมช่างเข้าเสริมเพิ่มคาดแก้ปัญหาได้ใน 2 วัน..." rows="3"></textarea>
+          <label for="rep-activities-planned-input">กิจกรรมที่ดำเนินได้ตามแผน:</label>
+          <textarea id="rep-activities-planned-input" placeholder="ระบุกิจกรรมที่ดำเนินการเสร็จสิ้นตามแผนในรอบเดือนนี้..." rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="rep-activities-unplanned-input">กิจกรรมที่ไม่สามารถดำเนินงานได้:</label>
+          <textarea id="rep-activities-unplanned-input" placeholder="ระบุกิจกรรมที่ไม่สามารถดำเนินการได้ตามแผน พร้อมสาเหตุสังเขป..." rows="3"></textarea>
+        </div>
+        <div class="form-group-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="rep-issues-input">ปัญหา อุปสรรค:</label>
+            <textarea id="rep-issues-input" placeholder="ปัญหา/อุปสรรคที่ตรวจพบระหว่างการทำงาน..." rows="3"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="rep-solutions-input">แนวทางแก้ปัญหา:</label>
+            <textarea id="rep-solutions-input" placeholder="แนวทางหรือมาตรการแก้ไขปัญหา..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="rep-reporter-input">ผู้รายงานผล (ดึงตัวเลือกจากรายชื่อสมาชิกในกลุ่ม):</label>
+          <select id="rep-reporter-input" required>
+            <option value="">-- เลือกผู้รายงานผล --</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="rep-file-input">อัปโหลดเอกสารรายงานประกอบฉบับเต็ม (PDF/Image):</label>
-          <input type="file" id="rep-file-input" name="report_file">
+          <input type="file" id="rep-file-input" name="report_file" accept=".pdf,image/*">
         </div>
         <div class="form-group">
           <label for="rep-status-input">ขั้นตอนจัดส่ง:</label>
           <select id="rep-status-input">
-            <option value="Draft">บันทึกร่างสัญญาก่อน (Draft)</option>
+            <option value="Draft">บันทึกร่างรายงานก่อน (Draft)</option>
             <option value="Submitted">ส่งอย่างเป็นทางการทันที (Submitted)</option>
           </select>
         </div>
