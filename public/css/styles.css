@@ -292,16 +292,16 @@ body {
 
 .auth-overlay {
   display: flex;
-  align-items: center;
-  justify-content: center;
   position: fixed;
   inset: 0;
   background: radial-gradient(circle at 10% 20%, rgb(240, 244, 250) 0%, rgb(220, 230, 245) 90.1%);
   z-index: 1000;
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
 }
 
 .auth-card {
+  margin: auto;
   width: 100%;
   max-width: 440px;
   padding: 2.5rem;
