@@ -248,15 +248,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper: Format Thai Full Date & Time
   function formatThaiDate(date) {
+    if (!date) return '-';
+    const d = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(d.getTime())) return '-';
     const monthsThai = [
       'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
       'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
     ];
-    const day = date.getDate();
-    const monthName = monthsThai[date.getMonth()];
-    const yearBE = date.getFullYear() + 543;
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const day = d.getDate();
+    const monthName = monthsThai[d.getMonth()];
+    const yearBE = d.getFullYear() + 543;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${day} ${monthName} ${yearBE} เวลา ${hours}:${minutes} น.`;
   }
 
