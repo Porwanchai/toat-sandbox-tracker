@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     wsProjectDesc: document.getElementById('ws-project-desc'),
     wsProjectStatus: document.getElementById('ws-project-status'),
     wsEditProjectBtn: document.getElementById('ws-edit-project-btn'),
+    printProjectReportBtn: document.getElementById('print-project-report-btn'),
     wsOverallProgressText: document.getElementById('ws-overall-progress-text'),
     wsOverallProgressFill: document.getElementById('ws-overall-progress-fill'),
     tabBtns: document.querySelectorAll('.tab-btn'),
@@ -1166,6 +1167,702 @@ document.addEventListener('DOMContentLoaded', () => {
     win.document.close();
   }
 
+  // ----------------------------------------------------
+  // INDIVIDUAL PROJECT REPORT GENERATION (A4 Portrait)
+  // ----------------------------------------------------
+  async function generateProjectReport(pid) {
+    // 1. Fetch all project sub-resources in parallel
+    const [project, members, stakeholders, budgetData, tasks, reports] = await Promise.all([
+      API.projects.get(pid),
+      API.members.list(pid),
+      API.stakeholders.list(pid),
+      API.budgets.list(pid),
+      API.gantt.list(pid),
+      API.reports.list(pid)
+    ]);
+
+    // Helpers
+    function getStatusText(s) {
+      const m = { 'Not Started': 'ยังไม่เริ่ม', 'In Progress': 'กำลังดำเนินการ', 'Delayed': 'ล่าช้า', 'Completed': 'เสร็จสิ้น' };
+      return m[s] || s || '-';
+    }
+    
+    function getStatusColor(s) {
+      const m = { 'Not Started': '#64748b', 'In Progress': '#2563eb', 'Delayed': '#d97706', 'Completed': '#059669' };
+      return m[s] || '#374151';
+    }
+
+    function getReportStatusText(s) {
+      const m = { 'Approved': 'อนุมัติแล้ว', 'Submitted': 'ส่งแล้ว / รอตรวจ', 'Draft': 'ร่าง (ยังไม่ส่ง)', 'Rejected': 'ต้องแก้ไข' };
+      return m[s] || 'ยังไม่ส่งรายงาน';
+    }
+
+    function getReportStatusColor(s) {
+      const m = { 'Approved': '#059669', 'Submitted': '#d97706', 'Draft': '#6b7280', 'Rejected': '#dc2626' };
+      return m[s] || '#dc2626';
+    }
+
+    function getTaskStatusText(s) {
+      const m = { 'Not Started': 'ยังไม่เริ่ม', 'In Progress': 'กำลังดำเนินการ', 'Completed': 'เสร็จสิ้น' };
+      return m[s] || s || '-';
+    }
+
+    function getTaskStatusColor(s) {
+      const m = { 'Not Started': '#6b7280', 'In Progress': '#2563eb', 'Completed': '#059669' };
+      return m[s] || '#374151';
+    }
+
+    function progressColor(pct) {
+      if (pct >= 80) return '#059669';
+      if (pct >= 50) return '#2563eb';
+      if (pct >= 20) return '#d97706';
+      return '#dc2626';
+    }
+
+    function progressBar(pct) {
+      const c = progressColor(pct);
+      return `<div style="display:flex;align-items:center;gap:6px;width:100%;">
+        <div style="flex:1;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${c};border-radius:4px;"></div>
+        </div>
+        <span style="font-size:0.75rem;font-weight:700;color:${c};min-width:30px;text-align:right;">${pct}%</span>
+      </div>`;
+    }
+
+    const avgProgress = Math.round(project.overall_progress || 0);
+    const datePrinted = formatThaiDate(new Date());
+
+    // 2. Build rows for Members
+    const memberRows = members.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:12px;font-size:0.8rem;">ยังไม่มีรายชื่อสมาชิกในทีม</td></tr>`
+      : members.map((m, i) => {
+        const photoTd = m.photo_path 
+          ? `<img src="${m.photo_path}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #cbd5e1;display:block;margin:0 auto;">`
+          : `<div style="width:34px;height:34px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-weight:bold;font-size:0.8rem;margin:0 auto;"><i class="fa-solid fa-user" style="font-size:0.75rem;"></i></div>`;
+        return `
+          <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+            <td style="padding:8px 10px;text-align:center;">${photoTd}</td>
+            <td style="padding:8px 10px;font-weight:600;font-size:0.8rem;color:#1e293b;">${m.employee_id || '-'}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#334155;">${m.full_name}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#334155;">${m.position || '-'}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#475569;">${m.division || '-'} / ${m.department || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+    // 3. Build rows for Stakeholders
+    const stakeholderRows = stakeholders.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:12px;font-size:0.8rem;">ยังไม่มีรายชื่อผู้เกี่ยวข้อง</td></tr>`
+      : stakeholders.map((s, i) => {
+        const typeBadgeColor = s.type === 'Sponsor' ? '#059669' : '#2563eb';
+        const typeText = s.type === 'Sponsor' ? 'สปอนเซอร์โครงการ' : 'ที่ปรึกษาโครงการ';
+        return `
+          <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+            <td style="padding:8px 10px;font-weight:600;font-size:0.8rem;color:#1e293b;">${s.employee_id || '-'}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#334155;">${s.full_name}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#334155;">${s.position || '-'}</td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#475569;">${s.division || '-'} / ${s.department || '-'}</td>
+            <td style="padding:8px 10px;text-align:center;">
+              <span style="background:${typeBadgeColor}18; color:${typeBadgeColor}; padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:700; border:1px solid ${typeBadgeColor}44; white-space:nowrap;">${typeText}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    // 4. Build Budget
+    const totalAllocated = budgetData.rollups ? budgetData.rollups.total_allocated : 0;
+    const totalSpent = budgetData.rollups ? budgetData.rollups.total_spent : 0;
+    const totalRemaining = budgetData.rollups ? budgetData.rollups.total_remaining : 0;
+
+    const budgetRows = !budgetData.items || budgetData.items.length === 0
+      ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:12px;font-size:0.8rem;">ยังไม่มีบันทึกรายละเอียดงบประมาณรายจ่าย</td></tr>`
+      : budgetData.items.map((b, i) => {
+        const remaining = b.remaining_amount;
+        const remainingColor = remaining < 0 ? '#dc2626' : '#059669';
+        const budgetTypeColors = { 'งบลงทุน': '#6366f1', 'งบค่าใช้สอย': '#0ea5e9', 'งบปฏิบัติการพิเศษ': '#f59e0b', 'อื่นๆ': '#8b5cf6' };
+        const typeColor = budgetTypeColors[b.budget_type] || '#64748b';
+        const typeLabel = (b.budget_type === 'อื่นๆ' && b.budget_type_other) ? `อื่นๆ: ${b.budget_type_other}` : (b.budget_type || '-');
+        const remainingPct = b.allocated_amount > 0 ? ((remaining / b.allocated_amount) * 100).toFixed(1) : '0.0';
+
+        return `
+          <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+            <td style="padding:8px 10px;">
+              <div style="font-weight:600; font-size:0.8rem; color:#1e293b;">${b.item_name}</div>
+              ${b.detail ? `<div style="font-size:0.72rem; color:#64748b; margin-top:2px;">${b.detail}</div>` : ''}
+            </td>
+            <td style="padding:8px 10px;text-align:center;">
+              <span style="background:${typeColor}18; color:${typeColor}; padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:700; border:1px solid ${typeColor}44; white-space:nowrap;">${typeLabel}</span>
+            </td>
+            <td style="padding:8px 10px;font-size:0.8rem;color:#475569;">${b.owner_unit || '-'}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:600;font-size:0.8rem;color:#1e293b;">${formatTHB(b.allocated_amount)}</td>
+            <td style="padding:8px 10px;text-align:right;font-size:0.8rem;color:#dc2626;">${formatTHB(b.spent_amount)}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;font-size:0.8rem;color:${remainingColor};">${formatTHB(remaining)} (${remainingPct}%)</td>
+          </tr>
+        `;
+      }).join('');
+
+    // 5. Build Gantt timeline tasks rows
+    let taskRows = '';
+    if (tasks.length === 0) {
+      taskRows = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:12px;font-size:0.8rem;">ยังไม่มีแผนดำเนินงานสำหรับโครงการนี้</td></tr>`;
+    } else {
+      const groups = {};
+      tasks.forEach(t => {
+        if (!groups[t.main_task]) {
+          groups[t.main_task] = [];
+        }
+        groups[t.main_task].push(t);
+      });
+
+      Object.keys(groups).forEach(mainTaskName => {
+        const groupTasks = groups[mainTaskName];
+        
+        let minStart = null;
+        let maxEnd = null;
+        let totalProgress = 0;
+        let subTaskCount = 0;
+        groupTasks.forEach(t => {
+          if (t.start_date) {
+            const start = new Date(t.start_date);
+            if (!minStart || start < minStart) minStart = start;
+          }
+          if (t.end_date) {
+            const end = new Date(t.end_date);
+            if (!maxEnd || end > maxEnd) maxEnd = end;
+          }
+          if (t.sub_task && t.sub_task.trim() !== '') {
+            totalProgress += t.progress_percent || 0;
+            subTaskCount++;
+          }
+        });
+        
+        const groupAvgProgress = subTaskCount > 0 ? Math.round(totalProgress / subTaskCount) : (groupTasks[0].progress_percent || 0);
+        const minStartDateStr = minStart ? formatThaiDate(minStart) : (groupTasks[0].start_date ? formatThaiDate(groupTasks[0].start_date) : '-');
+        const maxEndDateStr = maxEnd ? formatThaiDate(maxEnd) : (groupTasks[0].end_date ? formatThaiDate(groupTasks[0].end_date) : '-');
+
+        // Render main task group header
+        taskRows += `
+          <tr style="background:#f1f5f9; font-weight:bold;">
+            <td colspan="2" style="padding:8px 10px; border-bottom:1px solid #cbd5e1; font-size:0.82rem; color:#0f172a;"><i class="fa-solid fa-folder-open" style="color:#2563eb; margin-right:6px;"></i> ${mainTaskName}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #cbd5e1; text-align:center; font-size:0.8rem; color:#334155;">${minStartDateStr}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #cbd5e1; text-align:center; font-size:0.8rem; color:#334155;">${maxEndDateStr}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #cbd5e1;">${progressBar(groupAvgProgress)}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #cbd5e1; text-align:center; font-size:0.8rem; color:#64748b;">-</td>
+          </tr>
+        `;
+
+        // Render subtasks
+        groupTasks.forEach(t => {
+          if (t.sub_task && t.sub_task.trim() !== '') {
+            taskRows += `
+              <tr>
+                <td style="padding:8px 10px; font-size:0.8rem; color:#64748b; width:22%; padding-left:18px; line-height:1.3;">↳ ${t.main_task}</td>
+                <td style="padding:8px 10px; font-size:0.8rem; color:#1e293b; font-weight:500;">${t.sub_task}</td>
+                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.start_date ? formatThaiDate(t.start_date) : '-'}</td>
+                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.end_date ? formatThaiDate(t.end_date) : '-'}</td>
+                <td style="padding:8px 10px;">${progressBar(t.progress_percent || 0)}</td>
+                <td style="padding:8px 10px; font-size:0.8rem; color:#334155;">${t.assignee_name || '-'}</td>
+              </tr>
+            `;
+          }
+        });
+      });
+    }
+
+    // 6. Build Monthly Reports
+    const reportRows = reports.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:12px;font-size:0.8rem;">ยังไม่มีการยื่นสรุปรายงานประจำเดือน</td></tr>`
+      : reports.map((r, i) => `
+        <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+          <td style="padding:8px 10px;font-weight:700;font-size:0.8rem;color:#1e293b;text-align:center;white-space:nowrap;">รอบเดือน ${formatThaiMonthYear(r.report_month_year)}</td>
+          <td style="padding:8px 10px;font-size:0.78rem;color:#334155;line-height:1.45;white-space:pre-wrap;vertical-align:top;">${r.summary || '-'}</td>
+          <td style="padding:8px 10px;font-size:0.78rem;color:#dc2626;line-height:1.45;white-space:pre-wrap;vertical-align:top;">${r.issues_obstacles || '-'}</td>
+          <td style="padding:8px 10px;font-size:0.78rem;color:#64748b;white-space:nowrap;vertical-align:top;">
+            <div>${r.reporter_name || 'ไม่ระบุผู้รายงาน'}</div>
+            <div style="font-size:0.7rem;color:#9ca3af;margin-top:2px;">ส่ง: ${formatThaiDate(r.submitted_at)}</div>
+          </td>
+          <td style="padding:8px 10px;text-align:center;vertical-align:middle;">
+            <span style="background:${getReportStatusColor(r.status)}18;color:${getReportStatusColor(r.status)};padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:700;border:1px solid ${getReportStatusColor(r.status)}44;white-space:nowrap;">${getReportStatusText(r.status)}</span>
+          </td>
+        </tr>
+      `).join('');
+
+    // SVG progress ring configuration
+    const circumference = 2 * Math.PI * 42;
+    const dashOffset = circumference * (1 - avgProgress / 100);
+    const ringColor = progressColor(avgProgress);
+
+    const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายงานสรุปข้อมูลโครงการ – ${project.project_name}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Sarabun', 'Tahoma', 'Arial', sans-serif;
+      background: #e8edf3;
+      color: #1e293b;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    /* ── Screen toolbar ── */
+    .toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      padding: 10px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 3px 20px rgba(0,0,0,0.35);
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 12px; }
+    .toolbar-badge {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: white; font-size: 0.75rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px; letter-spacing: 0.05em;
+    }
+    .toolbar-title { color: #e2e8f0; font-size: 0.92rem; font-weight: 600; }
+    .toolbar-title strong { color: #60a5fa; }
+    .btn-print {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: white; border: none; padding: 8px 22px;
+      border-radius: 8px; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.45);
+      transition: all 0.2s; margin-left: 8px;
+    }
+    .btn-print:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(37,99,235,0.55); }
+    .btn-close {
+      background: rgba(255,255,255,0.1); color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 16px; border-radius: 8px; font-size: 0.85rem;
+      cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .btn-close:hover { background: rgba(255,255,255,0.2); }
+
+    /* ── Page wrapper ── */
+    .page-wrap { margin-top: 56px; padding: 28px 20px; max-width: 980px; margin-left: auto; margin-right: auto; }
+
+    /* ── A4 page card ── */
+    .a4 {
+      background: white; padding: 44px 52px;
+      margin-bottom: 28px; position: relative;
+      border-radius: 3px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.1);
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .a4:last-child {
+      page-break-after: auto;
+    }
+    .a4::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+      background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 45%, #7c3aed 100%);
+    }
+    .a4::after {
+      content: ''; position: absolute; top: 5px; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, rgba(29,78,216,0.2) 0%, rgba(14,165,233,0.1) 100%);
+    }
+
+    /* ── Cover ── */
+    .cover { text-align: center; padding: 20px 0 10px; }
+    .cover-logo {
+      width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px;
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; color: white; font-weight: 900;
+      box-shadow: 0 8px 24px rgba(29,78,216,0.35);
+    }
+    .cover-org { font-size: 0.85rem; color: #6b7280; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; margin-bottom: 6px; }
+    .cover-title { font-size: 1.8rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 8px; }
+    .cover-subtitle { font-size: 1.05rem; color: #2563eb; font-weight: 700; margin-bottom: 12px; }
+    .cover-divider { width: 60px; height: 4px; background: linear-gradient(90deg,#2563eb,#7c3aed); border-radius: 2px; margin: 20px auto; }
+    
+    .cover-info-box {
+      display: inline-flex; flex-direction: column; gap: 9px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      padding: 18px 32px; border-radius: 12px;
+      font-size: 0.88rem; color: #374151; text-align: left;
+      margin-bottom: 20px;
+    }
+    .cover-info-row { display: flex; gap: 8px; }
+    .cover-info-label { color: #6b7280; min-width: 130px; }
+    .cover-info-value { font-weight: 700; color: #111827; }
+    
+    /* ── Section title ── */
+    .sec-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1rem; font-weight: 800; color: #0f172a;
+      padding-bottom: 8px; margin-bottom: 14px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .sec-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: white; font-size: 0.72rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── Progress + budget block ── */
+    .overview-block {
+      display: flex; gap: 24px; align-items: center;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
+    }
+    .ring-wrap { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+    .ring-wrap svg { transform: rotate(-90deg); }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .ring-pct { font-size: 1.25rem; font-weight: 800; }
+    .ring-sub { font-size: 0.5rem; color: #6b7280; }
+    .budget-stack { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+    .budget-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 14px; border-radius: 8px;
+    }
+    .budget-lbl { font-size: 0.82rem; color: #374151; }
+    .budget-val { font-size: 0.9rem; font-weight: 800; }
+
+    /* ── Details Grid ── */
+    .details-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+      margin-bottom: 20px;
+    }
+    .detail-card {
+      border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 12px 14px; background: #ffffff;
+      page-break-inside: avoid;
+    }
+    .detail-card strong {
+      font-size: 0.82rem; color: #1e293b; display: flex; align-items: center; gap: 6px;
+      margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;
+    }
+    .detail-card p {
+      font-size: 0.78rem; color: #475569; line-height: 1.45; white-space: pre-wrap;
+    }
+
+    /* ── Table ── */
+    .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .report-table thead th {
+      background: #0f172a; color: white;
+      padding: 9px 10px; font-size: 0.78rem; font-weight: 700; text-align: left;
+      border: 1px solid #1e293b;
+    }
+    .report-table tbody tr { page-break-inside: avoid; }
+    .report-table tbody td { border: 1px solid #e2e8f0; padding: 8px 10px; }
+
+    /* ── Page footer ── */
+    .page-foot {
+      margin-top: 28px; padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.7rem; color: #9ca3af;
+    }
+
+    /* ── Decorative circles (cover) ── */
+    .deco { position: absolute; border-radius: 50%; pointer-events: none; }
+
+    /* ── Print ── */
+    @media print {
+      @page { size: A4 portrait; margin: 12mm 15mm; }
+      body { background: white; color: black; }
+      .toolbar { display: none !important; }
+      .page-wrap { margin-top: 0; padding: 0; max-width: 100%; }
+      .a4 {
+        padding: 8mm 0; margin-bottom: 0;
+        box-shadow: none; border-radius: 0;
+        page-break-after: always;
+      }
+      .a4:last-child { page-break-after: auto; }
+      .a4::before { height: 4px; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      .sec-title, .overview-block, .details-grid, .detail-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Screen toolbar ── -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <span class="toolbar-badge">TOAT SANDBOX</span>
+    <span class="toolbar-title">รายงานสรุปข้อมูลโครงการ – <strong>${project.project_name}</strong></span>
+  </div>
+  <div>
+    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+    <button class="btn-close" onclick="window.close()">✕ ปิด</button>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+<!-- ═════════════════════════════════════
+     หน้า 1 — ปกรายงาน
+═════════════════════════════════════ -->
+<div class="a4">
+  <div class="deco" style="width:240px;height:240px;background:radial-gradient(circle,rgba(37,99,235,0.07),transparent 70%);top:-60px;right:-60px;"></div>
+  <div class="deco" style="width:180px;height:180px;background:radial-gradient(circle,rgba(124,58,237,0.06),transparent 70%);bottom:-50px;left:-50px;"></div>
+
+  <div class="cover">
+    <img src="/images/logo.png" alt="TOAT Sandbox Logo" style="height: 100px; margin-bottom: 1.5rem; object-fit: contain;">
+    <div class="cover-org">TOAT Sandbox · Project Management System</div>
+    <div class="cover-title">รายงานสรุปข้อมูลและสถานะการดำเนินโครงการ</div>
+    <div class="cover-subtitle">${project.project_name}</div>
+    <div class="cover-divider"></div>
+    
+    <div class="cover-info-box">
+      <div class="cover-info-row">
+        <span class="cover-info-label">กลุ่มโครงการ:</span>
+        <span class="cover-info-value">${project.project_group || 'โครงการ TOAT Sandbox'}</span>
+      </div>
+      <div class="cover-info-row">
+        <span class="cover-info-label">สถานะโครงการ:</span>
+        <span class="cover-info-value" style="color:${getStatusColor(project.status)}; font-weight:800;">${getStatusText(project.status)}</span>
+      </div>
+      <div class="cover-info-row">
+        <span class="cover-info-label">ผู้รับผิดชอบหลัก:</span>
+        <span class="cover-info-value">${project.creator_name || '-'}</span>
+      </div>
+      <div class="cover-info-row">
+        <span class="cover-info-label">วันที่จัดทำรายงาน:</span>
+        <span class="cover-info-value">${datePrinted}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overview Metrics Block -->
+  <div style="margin-top:10px;">
+    <div class="sec-title">
+      <span class="sec-num">1</span>
+      <span>📊 สรุปผลความคืบหน้าและงบประมาณภาพรวม</span>
+    </div>
+    <div class="overview-block">
+      <div class="ring-wrap">
+        <svg width="96" height="96">
+          <circle cx="48" cy="48" r="42" stroke="#e5e7eb" stroke-width="8" fill="transparent" />
+          <circle cx="48" cy="48" r="42" stroke="${ringColor}" stroke-width="8" fill="transparent"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}" stroke-linecap="round" />
+        </svg>
+        <div class="ring-center">
+          <span class="ring-pct" style="color:${ringColor};">${avgProgress}%</span>
+          <span class="ring-sub">ความคืบหน้า</span>
+        </div>
+      </div>
+      <div class="budget-stack">
+        <div class="budget-row" style="background:#eff6ff;color:#1e40af;">
+          <span class="budget-lbl">💰 งบประมาณจัดสรรทั้งหมด</span>
+          <span class="budget-val">${formatTHB(totalAllocated)}</span>
+        </div>
+        <div class="budget-row" style="background:#fef2f2;color:#991b1b;">
+          <span class="budget-lbl">💸 งบประมาณเบิกจ่ายแล้ว</span>
+          <span class="budget-val">${formatTHB(totalSpent)}</span>
+        </div>
+        <div class="budget-row" style="background:#ecfdf5;color:#065f46;">
+          <span class="budget-lbl">✅ งบประมาณคงเหลือสุทธิ</span>
+          <span class="budget-val" style="color:${totalRemaining >= 0 ? '#065f46' : '#991b1b'};">${formatTHB(totalRemaining)}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <span>TOAT Sandbox · ${project.project_name}</span>
+    <span>หน้า 1 / 5</span>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════
+     หน้า 2 — รายละเอียดโครงการ
+═════════════════════════════════════ -->
+<div class="a4">
+  <div class="sec-title">
+    <span class="sec-num">2</span>
+    <span>📝 รายละเอียดข้อมูลโครงการ (Project Specification)</span>
+  </div>
+  <div class="details-grid">
+    <div class="detail-card">
+      <strong><i class="fa-solid fa-circle-info" style="color:#2563eb;"></i> รายละเอียดโครงการ</strong>
+      <p>${project.description || '-'}</p>
+    </div>
+    <div class="detail-card">
+      <strong><i class="fa-solid fa-bullseye" style="color:#2563eb;"></i> วัตถุประสงค์โครงการ</strong>
+      <p>${project.objectives || '-'}</p>
+    </div>
+    <div class="detail-card">
+      <strong><i class="fa-solid fa-crop-simple" style="color:#2563eb;"></i> ขอบเขตการดำเนินงาน</strong>
+      <p>${project.scope || '-'}</p>
+    </div>
+    <div class="detail-card">
+      <strong><i class="fa-solid fa-flag" style="color:#2563eb;"></i> เป้าหมายผลลัพธ์</strong>
+      <p>${project.targets || '-'}</p>
+    </div>
+    <div class="detail-card" style="grid-column: span 2;">
+      <strong><i class="fa-solid fa-chess-knight" style="color:#2563eb;"></i> ความเกี่ยวเนื่องยุทธศาสตร์องค์กร</strong>
+      <p>${project.strategic_alignment || '-'}</p>
+    </div>
+    <div class="detail-card" style="grid-column: span 2;">
+      <strong><i class="fa-solid fa-heart" style="color:#2563eb;"></i> ความเกี่ยวเนื่องค่านิยมองค์กร TOAT</strong>
+      <p>${project.values_alignment || '-'}</p>
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <span>TOAT Sandbox · ${project.project_name}</span>
+    <span>หน้า 2 / 5</span>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════
+     หน้า 3 — คณะทำงานและผู้เกี่ยวข้อง
+═════════════════════════════════════ -->
+<div class="a4">
+  <div class="sec-title">
+    <span class="sec-num">3</span>
+    <span>👥 รายชื่อคณะทำงานผู้รับผิดชอบโครงการ (Project Members)</span>
+  </div>
+  <table class="report-table" style="margin-bottom: 24px;">
+    <thead>
+      <tr>
+        <th style="width:70px;text-align:center;">รูปถ่าย</th>
+        <th style="width:130px;">รหัสพนักงาน</th>
+        <th>ชื่อ-นามสกุล</th>
+        <th>ตำแหน่งหน้าที่</th>
+        <th>หน่วยงาน / สังกัด</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${memberRows}
+    </tbody>
+  </table>
+
+  <div class="sec-title">
+    <span class="sec-num">4</span>
+    <span>🤝 ผู้มีส่วนเกี่ยวข้องและที่ปรึกษาโครงการ (Project Stakeholders)</span>
+  </div>
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th style="width:130px;">รหัสพนักงาน</th>
+        <th>ชื่อ-นามสกุล</th>
+        <th>ตำแหน่งหน้าที่</th>
+        <th>หน่วยงาน / สังกัด</th>
+        <th style="width:160px;text-align:center;">ประเภทผู้เกี่ยวข้อง</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${stakeholderRows}
+    </tbody>
+  </table>
+
+  <div class="page-foot">
+    <span>TOAT Sandbox · ${project.project_name}</span>
+    <span>หน้า 3 / 5</span>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════
+     หน้า 4 — บัญชีงบประมาณและแผนงานกิจกรรม
+═════════════════════════════════════ -->
+<div class="a4">
+  <div class="sec-title">
+    <span class="sec-num">5</span>
+    <span>💰 รายละเอียดบัญชีรายจ่ายงบประมาณจัดสรร (Budget Allocation)</span>
+  </div>
+  <table class="report-table" style="margin-bottom:24px;">
+    <thead>
+      <tr>
+        <th>ชื่อกิจกรรม / รายการงบประมาณ</th>
+        <th style="width:150px;text-align:center;">ประเภทงบ</th>
+        <th style="width:140px;">หน่วยงานเบิก</th>
+        <th style="width:120px;text-align:right;">งบจัดสรร</th>
+        <th style="width:120px;text-align:right;">เบิกจ่ายจริง</th>
+        <th style="width:150px;text-align:right;">คงเหลือ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${budgetRows}
+    </tbody>
+  </table>
+
+  <div class="sec-title">
+    <span class="sec-num">6</span>
+    <span>📅 รายการกิจกรรมโครงการตามแผนดำเนินงาน (Gantt Tasks)</span>
+  </div>
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th style="width:120px;">กิจกรรมหลัก</th>
+        <th>กิจกรรมย่อยดำเนินงาน</th>
+        <th style="width:100px;text-align:center;">วันที่เริ่มต้น</th>
+        <th style="width:100px;text-align:center;">วันที่สิ้นสุด</th>
+        <th style="width:130px;">ความคืบหน้า</th>
+        <th style="width:110px;text-align:center;">สถานะ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${taskRows}
+    </tbody>
+  </table>
+
+  <div class="page-foot">
+    <span>TOAT Sandbox · ${project.project_name}</span>
+    <span>หน้า 4 / 5</span>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════
+     หน้า 5 — ประวัติรายงานความคืบหน้าประจำเดือน
+═════════════════════════════════════ -->
+<div class="a4">
+  <div class="sec-title">
+    <span class="sec-num">7</span>
+    <span>📅 บันทึกผลการรายงานประจำเดือนสะสม (Monthly Progress Logs)</span>
+  </div>
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th style="width:120px;text-align:center;">รอบประจำเดือน</th>
+        <th style="width:250px;">สรุปผลการดำเนินงานเด่น</th>
+        <th style="width:200px;">ปัญหาและอุปสรรคที่ตรวจพบ</th>
+        <th>ผู้บันทึกรายงาน</th>
+        <th style="width:110px;text-align:center;">สถานะตรวจรับ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${reportRows}
+    </tbody>
+  </table>
+
+  <div class="page-foot">
+    <span>TOAT Sandbox · ${project.project_name}</span>
+    <span>หน้า 5 / 5</span>
+  </div>
+</div>
+
+</div><!-- end page-wrap -->
+</body>
+</html>`;
+
+    // Open in popup window
+    const win = window.open('', '_blank', 'width=1100,height=820,scrollbars=yes,resizable=yes');
+    if (!win) {
+      alert('กรุณาอนุญาต Popup จากเบราว์เซอร์ก่อน แล้วลองใหม่อีกครั้ง');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
+
   // Close notifications dropdown when clicking outside
   document.addEventListener('click', (e) => {
     if (!elements.notiToggle.contains(e.target) && !elements.notiDropdown.contains(e.target)) {
@@ -1740,6 +2437,26 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.modalCreateProject.showModal();
     } catch (err) {
       alert('ไม่สามารถโหลดข้อมูลโครงการได้: ' + err.message);
+    }
+  });
+
+  elements.printProjectReportBtn.addEventListener('click', async () => {
+    const pid = state.activeProjectId;
+    if (!pid) return;
+
+    // Show loading state
+    const origHTML = elements.printProjectReportBtn.innerHTML;
+    elements.printProjectReportBtn.disabled = true;
+    elements.printProjectReportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเตรียมสรุปรายงาน...';
+
+    try {
+      await generateProjectReport(pid);
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการสร้างรายงาน: ' + err.message);
+    } finally {
+      elements.printProjectReportBtn.disabled = false;
+      elements.printProjectReportBtn.innerHTML = origHTML;
     }
   });
 
