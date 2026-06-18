@@ -2257,56 +2257,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const isAdmin = state.currentUser.role === 'Admin';
 
         const logoHtml = p.logo_path 
-          ? `<img src="${p.logo_path}" alt="Logo" class="project-card-logo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-card); flex-shrink: 0;">`
-          : `<div class="project-card-logo-placeholder" style="width: 48px; height: 48px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; border: 1px solid var(--border-card); flex-shrink: 0;"><i class="fa-solid fa-rocket"></i></div>`;
+          ? `<img src="${p.logo_path}" alt="Logo" class="project-card-logo">`
+          : `<div class="project-card-logo-placeholder"><i class="fa-solid fa-rocket"></i></div>`;
 
         card.innerHTML = `
-          <div class="project-card-header">
-            <div style="display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0;">
-              ${logoHtml}
-              <div style="min-width: 0; flex: 1;">
-                <h3 style="margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.project_name}">${p.project_name}</h3>
-                <div style="display:flex; gap:0.25rem; margin-top:0.25rem; flex-wrap:wrap;">
+          <div class="project-card-logo-area">
+            ${logoHtml}
+          </div>
+          <div class="project-card-content-area">
+            <div class="project-card-header">
+              <div style="min-width: 0;">
+                <h3 style="margin: 0;" title="${p.project_name}">${p.project_name}</h3>
+                <div style="display:flex; gap:0.25rem; margin-top:0.25rem; flex-wrap:wrap; align-items:center;">
                   <span class="badge ${statusClass}">${statusBadgeText}</span>
                   ${p.is_hidden ? `<span class="badge hidden-status"><i class="fa-solid fa-eye-slash"></i> ซ่อนอยู่</span>` : ''}
+                  <span class="badge project-group-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted); border: 1px solid var(--border-card); font-size: 0.72rem; padding: 2px 8px;">${p.project_group || 'TOAT Sandbox'}</span>
                 </div>
               </div>
+              ${canManage ? `
+                <div class="project-card-actions">
+                  <button class="btn-icon edit-proj-btn" data-id="${p.id}" title="แก้ไขโครงการ"><i class="fa-solid fa-pen-to-square"></i></button>
+                  <button class="btn-icon suspend-proj-btn ${p.is_suspended ? 'active' : ''}" data-id="${p.id}" title="${p.is_suspended ? 'เปิดดำเนินการต่อ' : 'พักการดำเนินการ'}">
+                    <i class="fa-solid ${p.is_suspended ? 'fa-play' : 'fa-pause'}"></i>
+                  </button>
+                  <button class="btn-icon hide-proj-btn ${p.is_hidden ? 'active' : ''}" data-id="${p.id}" title="${p.is_hidden ? 'แสดงโครงการ' : 'ปิดตา/ซ่อนโครงการ'}">
+                    <i class="fa-solid ${p.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                  </button>
+                  ${isAdmin ? `
+                    <button class="btn-icon delete-proj-btn" data-id="${p.id}" title="ลบโครงการ"><i class="fa-solid fa-trash-can"></i></button>
+                  ` : ''}
+                </div>
+              ` : ''}
             </div>
-            ${canManage ? `
-              <div class="project-card-actions">
-                <button class="btn-icon edit-proj-btn" data-id="${p.id}" title="แก้ไขโครงการ"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="btn-icon suspend-proj-btn ${p.is_suspended ? 'active' : ''}" data-id="${p.id}" title="${p.is_suspended ? 'เปิดดำเนินการต่อ' : 'พักการดำเนินการ'}">
-                  <i class="fa-solid ${p.is_suspended ? 'fa-play' : 'fa-pause'}"></i>
-                </button>
-                <button class="btn-icon hide-proj-btn ${p.is_hidden ? 'active' : ''}" data-id="${p.id}" title="${p.is_hidden ? 'แสดงโครงการ' : 'ปิดตา/ซ่อนโครงการ'}">
-                  <i class="fa-solid ${p.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                </button>
-                ${isAdmin ? `
-                  <button class="btn-icon delete-proj-btn" data-id="${p.id}" title="ลบโครงการ"><i class="fa-solid fa-trash-can"></i></button>
-                ` : ''}
+            
+            <p class="project-card-desc">${p.description || 'ไม่มีคำอธิบายโครงการ'}</p>
+            
+            <div class="project-card-footer">
+              <div style="flex: 1; min-width: 150px;">
+                <div class="progress-info" style="font-size: 0.75rem; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">ความคืบหน้า</span>
+                  <strong style="color: var(--primary);">${progress}%</strong>
+                </div>
+                <div class="progress-track" style="height: 6px;">
+                  <div class="progress-fill" style="width: ${progress}%;"></div>
+                </div>
               </div>
-            ` : ''}
-          </div>
-          <p class="project-card-desc">${p.description || 'ไม่มีคำอธิบายโครงการ'}</p>
-          
-          <div style="margin-bottom: 1rem;">
-            <div class="progress-info" style="font-size: 0.75rem;">
-              <span>ความคืบหน้า</span>
-              <span>${progress}%</span>
+              
+              <div style="display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;">
+                <div class="project-card-budget">
+                  <span>งบจัดสรร</span>
+                  <strong>${formatTHB(p.total_allocated || 0)}</strong>
+                </div>
+                <button class="btn btn-primary btn-sm open-workspace-btn" data-id="${p.id}">
+                  เข้าทำงาน <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
             </div>
-            <div class="progress-track" style="height: 6px;">
-              <div class="progress-fill" style="width: ${progress}%;"></div>
-            </div>
-          </div>
-
-          <div class="project-card-footer">
-            <div class="project-card-budget">
-              <span>งบจัดสรร</span>
-              <strong>${formatTHB(p.total_allocated || 0)}</strong>
-            </div>
-            <button class="btn btn-primary btn-sm open-workspace-btn" data-id="${p.id}">
-              เข้าทำงาน <i class="fa-solid fa-chevron-right"></i>
-            </button>
           </div>
         `;
         elements.projectCardsContainer.appendChild(card);
