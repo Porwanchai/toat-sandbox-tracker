@@ -2234,89 +2234,156 @@ document.addEventListener('DOMContentLoaded', () => {
       const filteredProjects = projects.filter(p => showHidden || !p.is_hidden);
 
       if (filteredProjects.length === 0) {
-        elements.projectCardsContainer.innerHTML = '<div class="text-center" style="grid-column: 1/-1;">ไม่มีข้อมูลโครงการ</div>';
+        elements.projectCardsContainer.innerHTML = '<div class="text-center" style="grid-column: 1/-1; padding: 2rem;">ไม่มีข้อมูลโครงการ</div>';
         return;
       }
 
+      // Predefined group definitions in order
+      const groupDefs = [
+        { id: 'sandbox', name: 'โครงการ TOAT Sandbox', icon: '🔬', color: '#2563eb' },
+        { id: 'active', name: 'โครงการเดิมที่ดำเนินงานจริง', icon: '✅', color: '#10b981' },
+        { id: 'proposal', name: 'โครงการอยู่ระหว่างนำเสนอ', icon: '📋', color: '#f59e0b' }
+      ];
+
+      // Group projects
+      const grouped = {
+        sandbox: [],
+        active: [],
+        proposal: [],
+        other: []
+      };
+
       filteredProjects.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'project-card glassmorphism' + (p.is_hidden ? ' is-hidden' : '');
-        const progress = Math.round(p.overall_progress);
-        
-        let statusBadgeText = p.status;
-        let statusClass = p.status.toLowerCase().replace(' ', '-');
-        if (p.is_suspended) {
-          statusBadgeText = 'พักการดำเนินการ';
-          statusClass = 'suspended';
+        const groupName = p.project_group || '';
+        if (groupName === 'โครงการ TOAT Sandbox') {
+          grouped.sandbox.push(p);
+        } else if (groupName === 'โครงการเดิมที่ดำเนินงานจริง') {
+          grouped.active.push(p);
+        } else if (groupName === 'โครงการอยู่ระหว่างนำเสนอ') {
+          grouped.proposal.push(p);
         } else {
-          const statusTrans = { 'Not Started': 'ยังไม่เริ่ม', 'In Progress': 'กำลังดำเนินการ', 'Delayed': 'ล่าช้า', 'Completed': 'เสร็จสิ้น' };
-          statusBadgeText = statusTrans[p.status] || p.status;
+          grouped.other.push(p);
         }
+      });
 
-        const canManage = p.can_edit === 1 || state.currentUser.role === 'Admin';
-        const isAdmin = state.currentUser.role === 'Admin';
+      // Render each group
+      groupDefs.forEach(g => {
+        renderGroupSection(g.name, g.icon, g.color, grouped[g.id]);
+      });
 
-        const logoHtml = p.logo_path 
-          ? `<img src="${p.logo_path}" alt="Logo" class="project-card-logo">`
-          : `<div class="project-card-logo-placeholder"><i class="fa-solid fa-rocket"></i></div>`;
+      // Render other group if not empty
+      if (grouped.other.length > 0) {
+        renderGroupSection('กลุ่มโครงการอื่นๆ', '📁', '#64748b', grouped.other);
+      }
 
-        card.innerHTML = `
-          <div class="project-card-logo-area">
-            ${logoHtml}
-          </div>
-          <div class="project-card-content-area">
-            <div class="project-card-header">
-              <div style="min-width: 0;">
-                <h3 style="margin: 0;" title="${p.project_name}">${p.project_name}</h3>
-                <div style="display:flex; gap:0.25rem; margin-top:0.25rem; flex-wrap:wrap; align-items:center;">
-                  <span class="badge ${statusClass}">${statusBadgeText}</span>
-                  ${p.is_hidden ? `<span class="badge hidden-status"><i class="fa-solid fa-eye-slash"></i> ซ่อนอยู่</span>` : ''}
-                  <span class="badge project-group-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted); border: 1px solid var(--border-card); font-size: 0.72rem; padding: 2px 8px;">${p.project_group || 'TOAT Sandbox'}</span>
-                </div>
-              </div>
-              ${canManage ? `
-                <div class="project-card-actions">
-                  <button class="btn-icon edit-proj-btn" data-id="${p.id}" title="แก้ไขโครงการ"><i class="fa-solid fa-pen-to-square"></i></button>
-                  <button class="btn-icon suspend-proj-btn ${p.is_suspended ? 'active' : ''}" data-id="${p.id}" title="${p.is_suspended ? 'เปิดดำเนินการต่อ' : 'พักการดำเนินการ'}">
-                    <i class="fa-solid ${p.is_suspended ? 'fa-play' : 'fa-pause'}"></i>
-                  </button>
-                  <button class="btn-icon hide-proj-btn ${p.is_hidden ? 'active' : ''}" data-id="${p.id}" title="${p.is_hidden ? 'แสดงโครงการ' : 'ปิดตา/ซ่อนโครงการ'}">
-                    <i class="fa-solid ${p.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                  </button>
-                  ${isAdmin ? `
-                    <button class="btn-icon delete-proj-btn" data-id="${p.id}" title="ลบโครงการ"><i class="fa-solid fa-trash-can"></i></button>
-                  ` : ''}
-                </div>
-              ` : ''}
-            </div>
-            
-            <p class="project-card-desc">${p.description || 'ไม่มีคำอธิบายโครงการ'}</p>
-            
-            <div class="project-card-footer">
-              <div style="flex: 1; min-width: 150px;">
-                <div class="progress-info" style="font-size: 0.75rem; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                  <span style="color: var(--text-muted);">ความคืบหน้า</span>
-                  <strong style="color: var(--primary);">${progress}%</strong>
-                </div>
-                <div class="progress-track" style="height: 6px;">
-                  <div class="progress-fill" style="width: ${progress}%;"></div>
-                </div>
-              </div>
-              
-              <div style="display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;">
-                <div class="project-card-budget">
-                  <span>งบจัดสรร</span>
-                  <strong>${formatTHB(p.total_allocated || 0)}</strong>
-                </div>
-                <button class="btn btn-primary btn-sm open-workspace-btn" data-id="${p.id}">
-                  เข้าทำงาน <i class="fa-solid fa-chevron-right"></i>
-                </button>
-              </div>
-            </div>
+      function renderGroupSection(groupName, icon, color, list) {
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'project-group-container';
+
+        // Header HTML
+        const headerHTML = `
+          <div class="project-group-header">
+            <h2 class="project-group-title">
+              <span class="icon" style="color: ${color};">${icon}</span> ${groupName}
+            </h2>
+            <span class="project-group-badge">${list.length} โครงการ</span>
           </div>
         `;
-        elements.projectCardsContainer.appendChild(card);
-      });
+        groupContainer.innerHTML = headerHTML;
+
+        const cardsContainer = document.createElement('div');
+        cardsContainer.className = 'project-group-cards';
+
+        if (list.length === 0) {
+          const emptyCard = document.createElement('div');
+          emptyCard.className = 'project-group-empty';
+          emptyCard.textContent = 'ไม่มีโครงการในกลุ่มนี้';
+          cardsContainer.appendChild(emptyCard);
+        } else {
+          list.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card glassmorphism' + (p.is_hidden ? ' is-hidden' : '');
+            const progress = Math.round(p.overall_progress || 0);
+            
+            let statusBadgeText = p.status;
+            let statusClass = p.status.toLowerCase().replace(' ', '-');
+            if (p.is_suspended) {
+              statusBadgeText = 'พักการดำเนินการ';
+              statusClass = 'suspended';
+            } else {
+              const statusTrans = { 'Not Started': 'ยังไม่เริ่ม', 'In Progress': 'กำลังดำเนินการ', 'Delayed': 'ล่าช้า', 'Completed': 'เสร็จสิ้น' };
+              statusBadgeText = statusTrans[p.status] || p.status;
+            }
+
+            const canManage = p.can_edit === 1 || state.currentUser.role === 'Admin';
+            const isAdmin = state.currentUser.role === 'Admin';
+
+            const logoHtml = p.logo_path 
+              ? `<img src="${p.logo_path}" alt="Logo" class="project-card-logo">`
+              : `<div class="project-card-logo-placeholder"><i class="fa-solid fa-rocket"></i></div>`;
+
+            card.innerHTML = `
+              <div class="project-card-logo-area">
+                ${logoHtml}
+              </div>
+              <div class="project-card-content-area">
+                <div class="project-card-header">
+                  <div style="min-width: 0;">
+                    <h3 style="margin: 0;" title="${p.project_name}">${p.project_name}</h3>
+                    <div style="display:flex; gap:0.25rem; margin-top:0.25rem; flex-wrap:wrap; align-items:center;">
+                      <span class="badge ${statusClass}">${statusBadgeText}</span>
+                      ${p.is_hidden ? `<span class="badge hidden-status"><i class="fa-solid fa-eye-slash"></i> ซ่อนอยู่</span>` : ''}
+                      <span class="badge project-group-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted); border: 1px solid var(--border-card); font-size: 0.72rem; padding: 2px 8px;">${p.project_group || 'TOAT Sandbox'}</span>
+                    </div>
+                  </div>
+                  ${canManage ? `
+                    <div class="project-card-actions">
+                      <button class="btn-icon edit-proj-btn" data-id="${p.id}" title="แก้ไขโครงการ"><i class="fa-solid fa-pen-to-square"></i></button>
+                      <button class="btn-icon suspend-proj-btn ${p.is_suspended ? 'active' : ''}" data-id="${p.id}" title="${p.is_suspended ? 'เปิดดำเนินการต่อ' : 'พักการดำเนินการ'}">
+                        <i class="fa-solid ${p.is_suspended ? 'fa-play' : 'fa-pause'}"></i>
+                      </button>
+                      <button class="btn-icon hide-proj-btn ${p.is_hidden ? 'active' : ''}" data-id="${p.id}" title="${p.is_hidden ? 'แสดงโครงการ' : 'ปิดตา/ซ่อนโครงการ'}">
+                        <i class="fa-solid ${p.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                      </button>
+                      ${isAdmin ? `
+                        <button class="btn-icon delete-proj-btn" data-id="${p.id}" title="ลบโครงการ"><i class="fa-solid fa-trash-can"></i></button>
+                      ` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                
+                <p class="project-card-desc">${p.description || 'ไม่มีคำอธิบายโครงการ'}</p>
+                
+                <div class="project-card-footer">
+                  <div style="flex: 1; min-width: 150px;">
+                    <div class="progress-info" style="font-size: 0.75rem; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                      <span style="color: var(--text-muted);">ความคืบหน้า</span>
+                      <strong style="color: var(--primary);">${progress}%</strong>
+                    </div>
+                    <div class="progress-track" style="height: 6px;">
+                      <div class="progress-fill" style="width: ${progress}%;"></div>
+                    </div>
+                  </div>
+                  
+                  <div style="display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0;">
+                    <div class="project-card-budget">
+                      <span>งบจัดสรร</span>
+                      <strong>${formatTHB(p.total_allocated || 0)}</strong>
+                    </div>
+                    <button class="btn btn-primary btn-sm open-workspace-btn" data-id="${p.id}">
+                      เข้าทำงาน <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+            cardsContainer.appendChild(card);
+          });
+        }
+
+        groupContainer.appendChild(cardsContainer);
+        elements.projectCardsContainer.appendChild(groupContainer);
+      }
 
       // Bind click triggers
       document.querySelectorAll('.project-card .open-workspace-btn').forEach(btn => {

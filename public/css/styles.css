@@ -989,6 +989,71 @@ body {
   }
 }
 
+/* Project Grouping Layout styling */
+.project-group-container {
+  margin-bottom: 2.5rem;
+}
+
+.project-group-container:last-child {
+  margin-bottom: 0;
+}
+
+.project-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border-card);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.project-group-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.project-group-title i, .project-group-title span.icon {
+  font-size: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-group-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border: 1px solid var(--border-card);
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.project-group-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.project-group-empty {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-card);
+  border-radius: 12px;
+  padding: 2.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
 /* ==========================================================================
    PROJECT WORKSPACE (TABBED INTERFACE)
    ========================================================================== */
