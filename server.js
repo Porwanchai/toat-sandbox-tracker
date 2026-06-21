@@ -251,8 +251,9 @@ app.use(session({
   secret: 'toat-sandbox-super-secret-key-12345',
   resave: false,
   saveUninitialized: false,
+  rolling: true, // Reset cookie maxAge on every response
   cookie: {
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours default (will be overridden on login)
     secure: false // Set to true if running over HTTPS
   }
 }));
@@ -349,6 +350,14 @@ app.post('/api/auth/login', async (req, res) => {
       role: user.role,
       allowed_views: user.allowed_views
     };
+
+    // Dynamically set cookie maxAge based on role
+    if (user.role === 'Admin') {
+      req.session.cookie.maxAge = 365 * 24 * 60 * 60 * 1000; // 1 year (unlimited)
+    } else {
+      req.session.cookie.maxAge = 10 * 60 * 1000; // 10 minutes
+    }
+
     res.json({ message: 'Login successful', user: req.session.user });
   } catch (error) {
     res.status(500).json({ error: error.message });

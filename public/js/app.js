@@ -163,11 +163,18 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ----------------------------------------------------
-  // IDLE TIMEOUT MONITOR (5 minutes)
+  // IDLE TIMEOUT MONITOR (Dynamic: Admin = unlimited, Others = 10 minutes)
   // ----------------------------------------------------
-  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   let idleTimer = null;
   let lastResetTime = 0;
+
+  function getIdleTimeoutMs() {
+    if (!state.currentUser) return null;
+    if (state.currentUser.role === 'Admin') {
+      return null; // Admin: no auto-logout
+    }
+    return 10 * 60 * 1000; // Normal users: 10 minutes
+  }
 
   function resetIdleTimer() {
     const now = Date.now();
@@ -179,14 +186,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (idleTimer) {
       clearTimeout(idleTimer);
+      idleTimer = null;
     }
-    if (state.currentUser) {
-      idleTimer = setTimeout(handleIdleTimeout, IDLE_TIMEOUT_MS);
+
+    const timeoutMs = getIdleTimeoutMs();
+    if (timeoutMs !== null && state.currentUser) {
+      idleTimer = setTimeout(handleIdleTimeout, timeoutMs);
     }
   }
 
   async function handleIdleTimeout() {
     if (!state.currentUser) return;
+    
+    // Extra safety check: if user is Admin, do not trigger timeout
+    if (state.currentUser.role === 'Admin') return;
     
     if (idleTimer) {
       clearTimeout(idleTimer);
@@ -205,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.forgotForm.classList.add('hidden');
 
     // 2. Alert the user (blocking alert)
-    alert('หมดเวลาเข้าระบบเนื่องจากไม่มีการเคลื่อนไหวเกิน 5 นาที กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+    alert('หมดเวลาเข้าระบบเนื่องจากไม่มีการเคลื่อนไหวเกิน 10 นาที กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
     
     // 3. Clear session on backend server
     try {
