@@ -1383,6 +1383,7 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
     status 
   } = req.body;
   const report_file = req.file ? fileToBase64(req.file) : null;
+  const report_file_name = req.file ? req.file.originalname : null;
 
   if (!report_month_year) return res.status(400).json({ error: 'Month/Year is required' });
 
@@ -1422,8 +1423,9 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
         status
       ];
       if (report_file) {
-        query += `, report_file = ?`;
+        query += `, report_file = ?, report_file_name = ?`;
         params.push(report_file);
+        params.push(report_file_name);
       }
       if (submitted_at) {
         query += `, submitted_at = ?`;
@@ -1452,10 +1454,11 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
           issues_obstacles, 
           solutions, 
           reporter_name, 
-          report_file, 
+          report_file,
+          report_file_name,
           submitted_at, 
           status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           projectId, 
           report_month_year, 
@@ -1466,7 +1469,8 @@ app.post('/api/projects/:id/reports', requireLogin, requireRole(['Admin', 'Proje
           issues_obstacles, 
           solutions, 
           reporter_name, 
-          report_file, 
+          report_file,
+          report_file_name,
           submitted_at, 
           status || 'Draft'
         ]

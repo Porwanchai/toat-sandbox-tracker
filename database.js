@@ -324,6 +324,12 @@ async function initDatabase() {
       await dbRun("ALTER TABLE monthly_reports ADD COLUMN reporter_name TEXT");
     }
 
+    // 19. Run Migrations for Report File Name (stores original filename separate from base64 data)
+    const reportColsV19 = await dbAll("PRAGMA table_info(monthly_reports)");
+    if (!reportColsV19.some(c => c.name === 'report_file_name')) {
+      await dbRun("ALTER TABLE monthly_reports ADD COLUMN report_file_name TEXT");
+    }
+
     console.log('All database tables initialized.');
     await seedData();
 

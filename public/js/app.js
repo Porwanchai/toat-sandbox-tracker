@@ -234,6 +234,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener(evt, resetIdleTimer, { passive: true });
   });
 
+  // Global helper: Download report file from list table button (inline onclick)
+  window.downloadBase64File = async function(reportId) {
+    try {
+      const res = await fetch(`/api/reports/${reportId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('ไม่สามารถโหลดไฟล์ได้');
+      const data = await res.json();
+      if (!data.report || !data.report.report_file) {
+        alert('ไม่พบไฟล์เอกสารแนบในรายงานนี้');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = data.report.report_file;
+      a.download = data.report.report_file_name || 'เอกสารแนบรายงาน';
+      a.click();
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์: ' + err.message);
+    }
+  };
+
   // Helper: Format Currency
   function formatTHB(amount) {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
@@ -3639,7 +3658,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${formatDate(r.submitted_at)}</td>
             <td>
               ${r.report_file 
-                ? `<a href="${r.report_file}" target="_blank" class="badge badge-submitted"><i class="fa-solid fa-paperclip"></i> โหลดไฟล์แนบ</a>` 
+                ? `<button onclick="downloadBase64File('${r.id}')" class="badge badge-submitted" style="cursor:pointer; border:none;">
+                    <i class="fa-solid fa-paperclip"></i> โหลดไฟล์แนบ
+                   </button>` 
                 : '<span class="text-muted" style="font-size:0.75rem;">ไม่มีเอกสารแนบ</span>'}
             </td>
             <td>
@@ -3888,7 +3909,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Attachments link
       if (data.report.report_file) {
-        elements.repAttachmentLink.innerHTML = `<a href="${data.report.report_file}" target="_blank"><i class="fa-solid fa-file-pdf"></i> ดาวน์โหลดเอกสารฉบับเต็มประกอบรายงาน (${data.report.report_file.split('/').pop()})</a>`;
+        const fileName = data.report.report_file_name || 'เอกสารแนบรายงาน';
+        elements.repAttachmentLink.innerHTML = `
+          <a href="#" id="rep-file-download-btn" style="display:inline-flex;align-items:center;gap:0.4rem;">
+            <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลดเอกสารฉบับเต็มประกอบรายงาน (${fileName})
+          </a>`;
+        document.getElementById('rep-file-download-btn').addEventListener('click', (e) => {
+          e.preventDefault();
+          const a = document.createElement('a');
+          a.href = data.report.report_file;
+          a.download = fileName;
+          a.click();
+        });
       } else {
         elements.repAttachmentLink.innerHTML = '<span class="text-muted">ไม่มีการอัปโหลดไฟล์เอกสารประกอบ</span>';
       }
