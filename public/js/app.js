@@ -4363,8 +4363,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Executive Action: Reject / Send back to Draft
   elements.btnRejectReport.addEventListener('click', async () => {
+    const comment = prompt('กรุณาระบุความคิดเห็น / เหตุผลที่ต้องการให้แก้ไขปรับปรุงรายงานประจำเดือนนี้ (จำเป็นต้องระบุ):');
+    if (comment === null) return; // User cancelled
+    
+    const reason = comment.trim();
+    if (!reason) {
+      alert('ไม่สามารถส่งกลับแก้ไขได้: คุณจำเป็นต้องป้อนเหตุผล/ความคิดเห็นในการร้องขอให้ปรับปรุงรายงาน');
+      return;
+    }
+
     try {
-      await API.reports.updateStatus(state.activeReportId, 'Draft');
+      await API.reports.updateStatus(state.activeReportId, 'Draft', reason);
       alert('ส่งรายงานความคืบหน้ากลับให้ผู้รับผิดชอบโครงการแก้ไขเรียบร้อยแล้ว');
       loadReportDetailData();
     } catch (err) {

@@ -1568,15 +1568,30 @@ app.get('/api/reports/:reportId', requireLogin, async (req, res) => {
 // Approve / Change report status (Admin & Executive)
 app.put('/api/reports/:reportId/status', requireLogin, requireRole(['Admin', 'Executive']), async (req, res) => {
   const reportId = req.params.reportId;
-  const { status } = req.body;
+  const { status, comment } = req.body;
+  const { username, role } = req.session.user;
 
   if (!status || !['Draft', 'Submitted', 'Approved'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
+  // If status is 'Draft' (Reject / improvement request), comment is required!
+  if (status === 'Draft' && (!comment || !comment.trim())) {
+    return res.status(400).json({ error: 'กรุณาระบุความคิดเห็น / เหตุผลที่ต้องการให้ปรับปรุงรายงาน' });
+  }
+
   try {
     await dbRun('UPDATE monthly_reports SET status = ? WHERE id = ?', [status, reportId]);
     
+    // If a comment is provided, insert it into report_comments table
+    if (comment && comment.trim()) {
+      await dbRun(
+        'INSERT INTO report_comments (report_id, commenter_name, role, comment_text) VALUES (?, ?, ?, ?)',
+        [reportId, username, role, comment.trim()]
+      );
+      notifyCommentAdded(reportId, username, role, comment.trim());
+    }
+
     // Notify staff assigned to the project about status changes
     notifyReportStatusUpdate(reportId, status);
     

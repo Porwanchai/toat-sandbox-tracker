@@ -268,11 +268,11 @@ const API = {
       if (!res.ok) throw new Error('Failed to load report details');
       return res.json();
     },
-    async updateStatus(reportId, status) {
+    async updateStatus(reportId, status, comment = null) {
       const res = await fetch(`/api/reports/${reportId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, comment })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update report status');
