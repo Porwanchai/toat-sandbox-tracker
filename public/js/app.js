@@ -3670,6 +3670,9 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="btn btn-primary btn-xs view-report-preview-btn" data-id="${r.id}" title="ดูรายงานแบบ Popup">
                 <i class="fa-solid fa-eye"></i> ดูรายงาน
               </button>
+              <button class="btn btn-warning btn-xs edit-report-btn" data-id="${r.id}" data-month="${r.report_month_year}" title="แก้ไขรายงานนี้">
+                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+              </button>
               <button class="btn btn-secondary btn-xs view-report-fullpage-btn" data-id="${r.id}" title="เปิดหน้าเต็ม">
                 <i class="fa-solid fa-expand"></i>
               </button>
@@ -3682,6 +3685,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.view-report-preview-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             openReportPreviewModal(btn.getAttribute('data-id'));
+          });
+        });
+        // Bind edit button
+        document.querySelectorAll('.edit-report-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openEditReportModal(btn.getAttribute('data-month'));
           });
         });
         // Bind full-page view
@@ -3742,10 +3751,75 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Track edit context: 'create' or 'edit'
+  let _reportFormMode = 'create'; // 'create' | 'edit'
+
+  // Open modal in EDIT mode for a specific month's report
+  async function openEditReportModal(monthVal) {
+    _reportFormMode = 'edit';
+    elements.formCreateMonthlyReport.reset();
+
+    // Update modal title
+    const modalTitle = document.getElementById('lbl-create-monthly-report');
+    if (modalTitle) modalTitle.textContent = `✏️ แก้ไขรายงานประจำเดือน ${monthVal}`;
+
+    // Lock the month field
+    const repMonthInputEl = document.getElementById('rep-month-input');
+    if (repMonthInputEl) {
+      repMonthInputEl.value = monthVal;
+      repMonthInputEl.readOnly = true;
+      repMonthInputEl.style.background = '#f1f5f9';
+      repMonthInputEl.style.cursor = 'not-allowed';
+    }
+
+    // Load reporter options
+    const reporterSelect = document.getElementById('rep-reporter-input');
+    if (reporterSelect) {
+      reporterSelect.innerHTML = '<option value="">-- เลือกผู้รายงานผล --</option>';
+      try {
+        const members = await API.members.list(state.activeProjectId);
+        members.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.full_name;
+          opt.textContent = `${m.full_name} (${m.position || 'ไม่มีระบุตำแหน่ง'})`;
+          reporterSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Failed to load members:', err);
+      }
+    }
+
+    // Populate form with existing data
+    await populateReportFormForMonth(monthVal);
+
+    // Update submit button label
+    const submitBtn = elements.formCreateMonthlyReport.querySelector('[type="submit"]');
+    if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกการแก้ไข';
+
+    elements.modalCreateMonthlyReport.showModal();
+  }
+
   // Create monthly report trigger
   elements.createMonthlyReportBtn.addEventListener('click', async () => {
+    _reportFormMode = 'create';
     elements.formCreateMonthlyReport.reset();
-    
+
+    // Reset modal title
+    const modalTitle = document.getElementById('lbl-create-monthly-report');
+    if (modalTitle) modalTitle.textContent = 'จัดทำรายงานความคืบหน้าโครงการประจำเดือน';
+
+    // Unlock month field
+    const repMonthInputEl = document.getElementById('rep-month-input');
+    if (repMonthInputEl) {
+      repMonthInputEl.readOnly = false;
+      repMonthInputEl.style.background = '';
+      repMonthInputEl.style.cursor = '';
+    }
+
+    // Reset submit button
+    const submitBtn = elements.formCreateMonthlyReport.querySelector('[type="submit"]');
+    if (submitBtn) submitBtn.innerHTML = 'บันทึก / ส่งรายงาน';
+
     // Default select current previous month
     const now = new Date();
     let y = now.getFullYear();
