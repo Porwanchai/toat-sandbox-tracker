@@ -662,6 +662,11 @@ app.get('/api/projects', requireLogin, async (req, res) => {
           WHERE mr.project_id = p.id AND mr.report_month_year = ?
         ) as current_report_status,
         (
+          SELECT id 
+          FROM monthly_reports mr 
+          WHERE mr.project_id = p.id AND mr.report_month_year = ?
+        ) as current_report_id,
+        (
           CASE 
             WHEN ? = 'Admin' THEN 1
             WHEN ? = 'Executive' THEN 0
@@ -673,7 +678,7 @@ app.get('/api/projects', requireLogin, async (req, res) => {
         ) as can_edit
       FROM projects p
     `;
-    let params = [reportMonthYear, role, role, userId];
+    let params = [reportMonthYear, reportMonthYear, role, role, userId];
 
     const projects = await dbAll(query, params);
     res.json(projects);

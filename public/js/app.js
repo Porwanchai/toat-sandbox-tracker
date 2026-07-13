@@ -2127,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (p.current_report_status === 'Approved') {
             statusText = 'อนุมัติแล้ว';
             statusColor = 'var(--success)';
-          } else if (p.current_report_status === 'Pending') {
+          } else if (p.current_report_status === 'Pending' || p.current_report_status === 'Submitted') {
             statusText = 'รอตรวจทาน';
             statusColor = 'var(--warning)';
           } else if (p.current_report_status === 'Rejected') {
@@ -2136,12 +2136,28 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           li.innerHTML = `
-            <span class="li-project-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;" title="${p.project_name}">
+            <span class="li-project-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;" title="${p.project_name}">
               <i class="fa-solid fa-circle-check" style="color: var(--success); margin-right: 5px;"></i> ${p.project_name}
             </span>
-            <span style="font-size: 0.75rem; color: ${statusColor}; font-weight: bold; white-space: nowrap;">${statusText}</span>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <span style="font-size: 0.75rem; color: ${statusColor}; font-weight: bold; white-space: nowrap; margin-right: 2px;">${statusText}</span>
+              <button class="btn btn-primary btn-xs view-dashboard-report-btn" data-report-id="${p.current_report_id}" style="padding: 1px 4px; font-size: 0.7rem; line-height: 1.2; border-radius: 3px;">
+                <i class="fa-solid fa-eye"></i> ดู
+              </button>
+            </div>
           `;
           elements.listReportedProjects.appendChild(li);
+        });
+
+        // Bind click events to view reports on the dashboard list
+        document.querySelectorAll('.view-dashboard-report-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const reportId = btn.getAttribute('data-report-id');
+            if (reportId) {
+              openReportPreviewModal(reportId);
+            }
+          });
         });
       }
 
