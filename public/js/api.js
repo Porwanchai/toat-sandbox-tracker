@@ -287,6 +287,16 @@ const API = {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit comment');
       return data;
+    },
+    async sendReportEmail(reportId, email) {
+      const res = await fetch(`/api/reports/${reportId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send email');
+      return data;
     }
   },
 

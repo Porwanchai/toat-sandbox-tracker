@@ -1552,6 +1552,109 @@ app.put('/api/reports/:reportId/status', requireLogin, requireRole(['Admin', 'Ex
   }
 });
 
+// Send report via email to a specific recipient
+app.post('/api/reports/:reportId/send-email', requireLogin, async (req, res) => {
+  const reportId = req.params.reportId;
+  const { email: recipientEmail } = req.body;
+  const { id: userId, role } = req.session.user;
+
+  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    return res.status(400).json({ error: 'กรุณาระบุอีเมลที่ถูกต้อง' });
+  }
+
+  try {
+    const report = await dbGet('SELECT * FROM monthly_reports WHERE id = ?', [reportId]);
+    if (!report) return res.status(404).json({ error: 'ไม่พบรายงาน' });
+
+    const hasAccess = await checkProjectAccess(userId, role, report.project_id);
+    if (!hasAccess) return res.status(403).json({ error: 'Access denied' });
+
+    const project = await dbGet('SELECT project_name FROM projects WHERE id = ?', [report.project_id]);
+    const projectName = project ? project.project_name : 'ไม่ระบุชื่อโครงการ';
+
+    const subject = `[TOAT Sandbox] รายงานสรุปความคืบหน้าโครงการ "${projectName}" รอบเดือน ${report.report_month_year}`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Sarabun', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 24px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 28px 32px; color: #fff; }
+    .header h1 { font-size: 1.25rem; margin: 0 0 4px; }
+    .header p { color: #94a3b8; margin: 0; font-size: 0.9rem; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .badge-submitted { background: #dbeafe; color: #1d4ed8; }
+    .badge-approved  { background: #d1fae5; color: #065f46; }
+    .badge-draft     { background: #f1f5f9; color: #475569; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; background: #f7fafc; padding: 20px 32px; border-bottom: 1px solid #e2e8f0; }
+    .meta-item span { color: #64748b; font-size: 0.8rem; display: block; }
+    .meta-item strong { font-size: 0.92rem; }
+    .section { padding: 20px 32px; border-bottom: 1px solid #f1f5f9; }
+    .section h3 { font-size: 0.92rem; color: #2563eb; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .section p { color: #334155; font-size: 0.9rem; line-height: 1.6; margin: 0; white-space: pre-wrap; }
+    .budget-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .budget-table th { background: #1e293b; color: #fff; padding: 8px 12px; text-align: right; }
+    .budget-table th:first-child { text-align: left; }
+    .budget-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; }
+    .budget-table td:first-child { text-align: left; }
+    .footer { background: #f8fafc; padding: 16px 32px; text-align: center; color: #94a3b8; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 รายงานสรุปความคืบหน้าโครงการประจำเดือน</h1>
+      <p>ฝ่ายบริหารโครงการเทคโนโลยีและนวัตกรรม (TOAT Sandbox)</p>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item"><span>ชื่อโครงการ</span><strong>${projectName}</strong></div>
+      <div class="meta-item"><span>รอบรายงานประจำเดือน</span><strong>${report.report_month_year}</strong></div>
+      <div class="meta-item"><span>ผู้รายงานผล</span><strong>${report.reporter_name || 'ไม่ระบุ'}</strong></div>
+      <div class="meta-item"><span>สถานะรายงาน</span>
+        <span class="badge badge-${(report.status || 'draft').toLowerCase()}">${report.status || 'Draft'}</span>
+      </div>
+    </div>
+    <div class="section">
+      <h3>1. สรุปสาระสำคัญ (Project Summary)</h3>
+      <p>${report.summary || 'ไม่มีข้อมูล'}</p>
+    </div>
+    <div class="section">
+      <h3>2. กิจกรรมที่ดำเนินได้ตามแผน</h3>
+      <p>${report.activities_planned || 'ไม่มีข้อมูล'}</p>
+    </div>
+    <div class="section">
+      <h3>3. กิจกรรมที่ไม่สามารถดำเนินงานได้</h3>
+      <p>${report.activities_unplanned || 'ไม่มีข้อมูล'}</p>
+    </div>
+    <div class="section">
+      <h3>4. ปัญหา อุปสรรค</h3>
+      <p>${report.issues_obstacles || 'ไม่มีปัญหา อุปสรรค'}</p>
+    </div>
+    <div class="section">
+      <h3>5. แนวทางการแก้ไขปัญหา</h3>
+      <p>${report.solutions || 'ไม่มีข้อมูล'}</p>
+    </div>
+    <div class="footer">
+      <p>อีเมลนี้ส่งโดยอัตโนมัติจากระบบ TOAT Sandbox Project Tracker<br>
+      กรุณาเข้าสู่ระบบเพื่อดูรายงานฉบับเต็มพร้อมข้อมูลงบประมาณและเอกสารแนบ</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `รายงานสรุปความคืบหน้าโครงการประจำเดือน\nโครงการ: ${projectName}\nรอบเดือน: ${report.report_month_year}\nผู้รายงาน: ${report.reporter_name || 'ไม่ระบุ'}\nสถานะ: ${report.status || 'Draft'}\n\nสรุป:\n${report.summary || '-'}\n\nกิจกรรมตามแผน:\n${report.activities_planned || '-'}\n\nปัญหา อุปสรรค:\n${report.issues_obstacles || '-'}\n\nแนวทางแก้ไข:\n${report.solutions || '-'}`;
+
+    await sendEmailNotification(recipientEmail, subject, text, html);
+    res.json({ message: `ส่งรายงานไปยัง ${recipientEmail} เรียบร้อยแล้ว` });
+  } catch (error) {
+    console.error('Failed to send report email:', error);
+    res.status(500).json({ error: 'ไม่สามารถส่งอีเมลได้: ' + error.message });
+  }
+});
+
 // Add comment (Executive & Admin, or Staff if they are assigned to the project to discuss feedback)
 app.post('/api/reports/:reportId/comments', requireLogin, async (req, res) => {
   const reportId = req.params.reportId;

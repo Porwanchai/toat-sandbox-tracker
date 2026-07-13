@@ -2281,3 +2281,249 @@ dialog form {
   border-radius: 50%;
   object-fit: cover;
 }
+
+/* ==========================================================================
+   REPORT PREVIEW MODAL (Popup A4 Preview)
+   ========================================================================== */
+
+.report-preview-modal {
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: auto;
+  width: min(92vw, 1000px);
+  max-height: 92vh;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.15);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  animation: rpModalIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes rpModalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.report-preview-modal::backdrop {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+/* Header */
+.rp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.2rem;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #fff;
+  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.rp-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.01em;
+}
+
+.rp-modal-title i {
+  color: #60a5fa;
+  font-size: 1.1rem;
+}
+
+.rp-modal-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.rp-close-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #e2e8f0;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+
+.rp-close-btn:hover {
+  background: rgba(239, 68, 68, 0.7);
+  color: #fff;
+}
+
+/* Scrollable body */
+.rp-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #e2e8f0;
+  padding: 1.5rem;
+  min-height: 0;
+}
+
+.rp-a4-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.rp-a4-wrapper .a4-sheet {
+  box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  max-width: 100%;
+}
+
+/* Bottom action bar */
+.rp-action-bar {
+  display: flex;
+  align-items: stretch;
+  background: #1e293b;
+  border-top: 2px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.rp-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.85rem 1.3rem;
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-family);
+  transition: all 0.2s;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  min-width: 80px;
+}
+
+.rp-action-btn i {
+  font-size: 1.2rem;
+}
+
+.rp-action-btn:hover {
+  color: #fff;
+}
+
+.rp-action-view { background: rgba(37, 99, 235, 0.2); }
+.rp-action-view:hover { background: var(--primary); }
+
+.rp-action-print { background: rgba(124, 58, 237, 0.15); }
+.rp-action-print:hover { background: #7c3aed; }
+
+.rp-action-download { background: rgba(16, 185, 129, 0.15); }
+.rp-action-download:hover { background: var(--success); }
+
+.rp-action-email { background: rgba(245, 158, 11, 0.15); }
+.rp-action-email:hover { background: var(--warning); color: #1e293b; }
+.rp-action-email:hover span { color: #1e293b; }
+.rp-action-email.active { background: var(--warning); color: #1e293b; }
+.rp-action-email.active span { color: #1e293b; }
+
+.rp-action-close { background: rgba(239, 68, 68, 0.15); margin-left: auto; }
+.rp-action-close:hover { background: var(--danger); }
+
+/* Email panel */
+.rp-email-panel {
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  padding: 0.9rem 1.2rem;
+  flex-shrink: 0;
+  animation: rpSlideDown 0.2s ease-out;
+}
+
+@keyframes rpSlideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rp-email-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rp-email-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.5rem 0.85rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.rp-email-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.rp-email-status {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.rp-email-status.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.rp-email-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Print: only print the A4 sheet from the modal */
+@media print {
+  body > * { display: none !important; }
+  #modal-report-preview { display: block !important; position: static; box-shadow: none; border-radius: 0; }
+  .rp-modal-header, .rp-action-bar, .rp-email-panel { display: none !important; }
+  .rp-modal-body { overflow: visible; padding: 0; background: white; }
+  .rp-a4-wrapper { justify-content: flex-start; }
+  .rp-a4-wrapper .a4-sheet { box-shadow: none; }
+}
+
+/* Responsive: smaller screens */
+@media (max-width: 768px) {
+  .report-preview-modal {
+    width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+  .rp-action-btn {
+    padding: 0.75rem 0.9rem;
+    min-width: 60px;
+    font-size: 0.65rem;
+  }
+  .rp-action-btn i { font-size: 1rem; }
+  .rp-modal-title span { display: none; }
+}
+

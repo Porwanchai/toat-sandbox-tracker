@@ -3666,17 +3666,26 @@ document.addEventListener('DOMContentLoaded', () => {
                    </button>` 
                 : '<span class="text-muted" style="font-size:0.75rem;">ไม่มีเอกสารแนบ</span>'}
             </td>
-            <td>
-              <button class="btn btn-secondary btn-xs view-report-detail-btn" data-id="${r.id}">
-                <i class="fa-solid fa-file-lines"></i> เปิดรายงาน A4
+            <td style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-xs view-report-preview-btn" data-id="${r.id}" title="ดูรายงานแบบ Popup">
+                <i class="fa-solid fa-eye"></i> ดูรายงาน
+              </button>
+              <button class="btn btn-secondary btn-xs view-report-fullpage-btn" data-id="${r.id}" title="เปิดหน้าเต็ม">
+                <i class="fa-solid fa-expand"></i>
               </button>
             </td>
           `;
           elements.wsReportsTableBody.appendChild(tr);
         });
 
-        // Bind detail navigation
-        document.querySelectorAll('.view-report-detail-btn').forEach(btn => {
+        // Bind preview (modal)
+        document.querySelectorAll('.view-report-preview-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openReportPreviewModal(btn.getAttribute('data-id'));
+          });
+        });
+        // Bind full-page view
+        document.querySelectorAll('.view-report-fullpage-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             state.activeReportId = btn.getAttribute('data-id');
             showView('monthly-report-detail');
@@ -3809,6 +3818,228 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+
+  // ----------------------------------------------------
+  // 3b. REPORT PREVIEW MODAL (Popup A4 Preview)
+  // ----------------------------------------------------
+
+  const modalReportPreview = document.getElementById('modal-report-preview');
+  let _rpCurrentReportData = null; // cached for email / download
+
+  async function openReportPreviewModal(reportId) {
+    state.activeReportId = reportId;
+    _rpCurrentReportData = null;
+
+    try {
+      const data = await API.reports.getDetails(reportId);
+      _rpCurrentReportData = data;
+
+      // --- Populate meta ---
+      document.getElementById('rp-proj-name').textContent = data.project.project_name;
+      document.getElementById('rp-month-year').textContent = `รอบการทำงานประจำเดือน ${data.report.report_month_year}`;
+
+      const rpProjStatus = document.getElementById('rp-proj-status');
+      rpProjStatus.className = `badge ${data.project.status.toLowerCase().replace(' ', '-')}`;
+      rpProjStatus.textContent = data.project.status;
+
+      document.getElementById('rp-proj-progress').textContent = `${Math.round(data.project.overall_progress)}%`;
+      document.getElementById('rp-submitted-at').textContent = formatDate(data.report.submitted_at);
+      document.getElementById('rp-reporter-meta').textContent = data.report.reporter_name || 'ไม่ระบุผู้รายงาน';
+
+      const rpStatus = document.getElementById('rp-status');
+      rpStatus.className = `badge ${data.report.status.toLowerCase()}`;
+      rpStatus.textContent = data.report.status;
+
+      const signReporter = document.getElementById('rp-sign-reporter-name');
+      if (signReporter) signReporter.textContent = data.report.reporter_name || 'ผู้รับผิดชอบโครงการประจำ TOAT Sandbox';
+
+      // --- Content sections ---
+      document.getElementById('rp-summary-text').textContent = data.report.summary || 'ไม่มีข้อความสรุปการดำเนินงาน';
+
+      const rpPlanned = document.getElementById('rp-activities-planned-text');
+      const rpUnplanned = document.getElementById('rp-activities-unplanned-text');
+      const rpSolutions = document.getElementById('rp-solutions-text');
+      if (rpPlanned) rpPlanned.textContent = data.report.activities_planned || 'ไม่มีกิจกรรมดำเนินได้ตามแผน';
+      if (rpUnplanned) rpUnplanned.textContent = data.report.activities_unplanned || 'ไม่มีกิจกรรมที่ไม่สามารถดำเนินงานได้';
+      document.getElementById('rp-issues-text').textContent = data.report.issues_obstacles || 'ไม่มีปัญหา อุปสรรค';
+      if (rpSolutions) rpSolutions.textContent = data.report.solutions || 'ไม่มีแนวทางแก้ปัญหา';
+
+      // --- Budget summary ---
+      document.getElementById('rp-budget-allocated').textContent = formatTHB(data.budgets.total_allocated);
+      document.getElementById('rp-budget-spent').textContent = formatTHB(data.budgets.total_spent);
+      document.getElementById('rp-budget-remaining').textContent = formatTHB(data.budgets.total_remaining);
+
+      const rpBudgetBody = document.getElementById('rp-budget-items-body');
+      rpBudgetBody.innerHTML = '';
+      if (!data.budgetItems || data.budgetItems.length === 0) {
+        rpBudgetBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#64748b;">ไม่มีรายการงบประมาณ</td></tr>';
+      } else {
+        data.budgetItems.forEach(b => {
+          const remaining = b.remaining_amount;
+          const remainingClass = remaining < 0 ? 'color:#ef4444;font-weight:700' : 'color:#10b981';
+          const remainingPct = b.allocated_amount > 0 ? ((remaining / b.allocated_amount) * 100).toFixed(1) : '0.0';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="text-align:left;">
+              <div style="font-weight:600;">${b.item_name}</div>
+              ${b.detail ? `<div style="font-size:0.73rem;color:#64748b;">${b.detail}</div>` : ''}
+            </td>
+            <td>${b.budget_type || '-'}</td>
+            <td>${b.owner_unit || '-'}</td>
+            <td style="text-align:right;">${formatTHB(b.allocated_amount)}</td>
+            <td style="text-align:right;color:#ef4444;">${formatTHB(b.spent_amount)}</td>
+            <td style="text-align:right;${remainingClass}">${formatTHB(remaining)}</td>
+            <td style="text-align:center;">${remainingPct}%</td>
+            <td style="font-size:0.75rem;">${b.remarks || '-'}</td>
+          `;
+          rpBudgetBody.appendChild(tr);
+        });
+      }
+
+      // --- Attachment ---
+      const rpAttach = document.getElementById('rp-attachment-link');
+      if (data.report.report_file) {
+        const fileName = data.report.report_file_name || 'เอกสารแนบรายงาน';
+        rpAttach.innerHTML = `<a href="#" id="rp-modal-attach-btn" style="display:inline-flex;align-items:center;gap:0.4rem;">
+          <i class="fa-solid fa-file-pdf"></i> ${fileName}
+        </a>`;
+        document.getElementById('rp-modal-attach-btn')?.addEventListener('click', e => {
+          e.preventDefault();
+          const a = document.createElement('a');
+          a.href = data.report.report_file;
+          a.download = fileName;
+          a.click();
+        });
+
+        // Enable download button
+        document.getElementById('rp-btn-download-attach').disabled = false;
+        document.getElementById('rp-btn-download-attach').style.opacity = '1';
+      } else {
+        rpAttach.innerHTML = '<span style="color:#94a3b8;">ไม่มีเอกสารแนบ</span>';
+        document.getElementById('rp-btn-download-attach').disabled = true;
+        document.getElementById('rp-btn-download-attach').style.opacity = '0.4';
+      }
+
+      // Reset email panel
+      const rpEmailPanel = document.getElementById('rp-email-panel');
+      const rpEmailInput = document.getElementById('rp-email-input');
+      const rpEmailStatus = document.getElementById('rp-email-status');
+      const rpEmailToggleBtn = document.getElementById('rp-btn-email-toggle');
+      rpEmailPanel.classList.add('hidden');
+      rpEmailToggleBtn.classList.remove('active');
+      if (rpEmailInput) rpEmailInput.value = '';
+      if (rpEmailStatus) { rpEmailStatus.className = 'rp-email-status hidden'; rpEmailStatus.textContent = ''; }
+
+      // Show modal
+      modalReportPreview.showModal();
+      // Scroll to top of modal body
+      const rpBody = modalReportPreview.querySelector('.rp-modal-body');
+      if (rpBody) rpBody.scrollTop = 0;
+
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการโหลดรายงาน: ' + err.message);
+    }
+  }
+
+  // Modal close buttons
+  document.getElementById('rp-btn-close-modal')?.addEventListener('click', () => modalReportPreview.close());
+  document.getElementById('rp-btn-close-bar')?.addEventListener('click', () => modalReportPreview.close());
+
+  // Header navigation buttons
+  document.getElementById('rp-btn-back-home')?.addEventListener('click', () => {
+    modalReportPreview.close();
+    showView('dashboard');
+  });
+  document.getElementById('rp-btn-back-prev')?.addEventListener('click', () => {
+    modalReportPreview.close();
+    showView('project-workspace', true);
+  });
+
+  // View full page
+  document.getElementById('rp-btn-view-fullpage')?.addEventListener('click', () => {
+    modalReportPreview.close();
+    showView('monthly-report-detail');
+  });
+
+  // Print
+  document.getElementById('rp-btn-print')?.addEventListener('click', () => {
+    window.print();
+  });
+
+  // Download attachment
+  document.getElementById('rp-btn-download-attach')?.addEventListener('click', () => {
+    if (!_rpCurrentReportData?.report?.report_file) return;
+    const a = document.createElement('a');
+    a.href = _rpCurrentReportData.report.report_file;
+    a.download = _rpCurrentReportData.report.report_file_name || 'เอกสารแนบรายงาน';
+    a.click();
+  });
+
+  // Toggle email panel
+  document.getElementById('rp-btn-email-toggle')?.addEventListener('click', () => {
+    const panel = document.getElementById('rp-email-panel');
+    const btn = document.getElementById('rp-btn-email-toggle');
+    const isOpen = !panel.classList.contains('hidden');
+    if (isOpen) {
+      panel.classList.add('hidden');
+      btn.classList.remove('active');
+    } else {
+      panel.classList.remove('hidden');
+      btn.classList.add('active');
+      document.getElementById('rp-email-input')?.focus();
+    }
+  });
+
+  // Cancel email
+  document.getElementById('rp-btn-cancel-email')?.addEventListener('click', () => {
+    document.getElementById('rp-email-panel').classList.add('hidden');
+    document.getElementById('rp-btn-email-toggle').classList.remove('active');
+  });
+
+  // Send email
+  document.getElementById('rp-btn-send-email')?.addEventListener('click', async () => {
+    const emailInput = document.getElementById('rp-email-input');
+    const statusEl = document.getElementById('rp-email-status');
+    const sendBtn = document.getElementById('rp-btn-send-email');
+    const email = emailInput?.value?.trim();
+
+    if (!email) {
+      emailInput?.focus();
+      return;
+    }
+
+    const reportId = state.activeReportId;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+    statusEl.className = 'rp-email-status hidden';
+    statusEl.textContent = '';
+
+    try {
+      const result = await API.reports.sendReportEmail(reportId, email);
+      statusEl.className = 'rp-email-status success';
+      statusEl.textContent = `✓ ${result.message}`;
+      statusEl.classList.remove('hidden');
+      emailInput.value = '';
+    } catch (err) {
+      statusEl.className = 'rp-email-status error';
+      statusEl.textContent = `✗ ${err.message}`;
+      statusEl.classList.remove('hidden');
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ส่งอีเมล';
+    }
+  });
+
+  // Close on backdrop click for this modal
+  modalReportPreview?.addEventListener('click', e => {
+    const rect = modalReportPreview.getBoundingClientRect();
+    if (
+      e.clientX < rect.left || e.clientX > rect.right ||
+      e.clientY < rect.top  || e.clientY > rect.bottom
+    ) {
+      modalReportPreview.close();
+    }
+  });
 
   // ----------------------------------------------------
   // 4. OFFICIAL MONTHLY REPORT DETAIL VIEW
