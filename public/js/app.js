@@ -331,7 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Admin always has access to all views.
       // If a view is not in allowedViews, block access (except project-workspace and report-detail which are sub-views of projects-list)
       const isSubView = ['project-workspace', 'report-detail'].includes(viewName);
-      if (state.currentUser.role !== 'Admin' && !allowedViews.includes(viewName) && !isSubView) {
+      const hasAccess = allowedViews.includes(viewName) || allowedViews.includes(`${viewName}:read`) || allowedViews.includes(`${viewName}:write`);
+      if (state.currentUser.role !== 'Admin' && !hasAccess && !isSubView) {
         alert('คุณไม่มีสิทธิ์เข้าใช้งานหน้าต่างนี้');
         return;
       }
@@ -466,7 +467,8 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.navLinks.forEach(link => {
         const view = link.getAttribute('data-view');
         // Admin always has access to all views
-        if (state.currentUser.role === 'Admin' || allowedViews.includes(view)) {
+        const hasAccess = state.currentUser.role === 'Admin' || allowedViews.includes(view) || allowedViews.includes(`${view}:read`) || allowedViews.includes(`${view}:write`);
+        if (hasAccess) {
           link.parentElement.classList.remove('hidden');
         } else {
           link.parentElement.classList.add('hidden');
@@ -4466,11 +4468,14 @@ document.addEventListener('DOMContentLoaded', () => {
           ? '<span class="badge completed">อนุมัติแล้ว</span>' 
           : '<span class="badge delayed">รออนุมัติ</span>';
 
-        // Check view permissions checkboxes status
+        // Check view/edit permissions checkboxes status
         const views = (u.allowed_views || '').split(',').map(v => v.trim());
-        const hasDashboard = views.includes('dashboard') ? 'checked' : '';
-        const hasProjects = views.includes('projects-list') ? 'checked' : '';
-        const hasAdmin = views.includes('admin-panel') ? 'checked' : '';
+        const hasDashboardRead = views.includes('dashboard:read') || views.includes('dashboard') || views.includes('dashboard:write') ? 'checked' : '';
+        const hasDashboardWrite = views.includes('dashboard:write') ? 'checked' : '';
+        const hasProjectsRead = views.includes('projects-list:read') || views.includes('projects-list') || views.includes('projects-list:write') ? 'checked' : '';
+        const hasProjectsWrite = views.includes('projects-list:write') ? 'checked' : '';
+        const hasAdminRead = views.includes('admin-panel:read') || views.includes('admin-panel') || views.includes('admin-panel:write') ? 'checked' : '';
+        const hasAdminWrite = views.includes('admin-panel:write') ? 'checked' : '';
 
         tr.innerHTML = `
           <td><strong>${u.username}</strong> ${isSelf ? ' (คุณ)' : ''}</td>
@@ -4480,15 +4485,32 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>Line: ${u.line_id || '-'} <br> โทร: ${u.phone_number || '-'}</td>
           <td>${approvedBadge}</td>
           <td>
-            <label style="display:block; font-size:0.75rem; margin-bottom: 3px; cursor: pointer;">
-              <input type="checkbox" class="permission-checkbox" data-id="${u.id}" data-view="dashboard" ${hasDashboard}> แดชบอร์ด
-            </label>
-            <label style="display:block; font-size:0.75rem; margin-bottom: 3px; cursor: pointer;">
-              <input type="checkbox" class="permission-checkbox" data-id="${u.id}" data-view="projects-list" ${hasProjects}> รายการโครงการ
-            </label>
-            <label style="display:block; font-size:0.75rem; margin-bottom: 3px; cursor: pointer;">
-              <input type="checkbox" class="permission-checkbox" data-id="${u.id}" data-view="admin-panel" ${hasAdmin}> จัดการระบบ
-            </label>
+            <table style="width:100%; border:none; margin:0; background:transparent; font-size:0.75rem; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid rgba(0,0,0,0.08); background: transparent;">
+                  <th style="padding: 2px 4px; text-align: left; font-weight: 600;">หน้าต่าง</th>
+                  <th style="padding: 2px 4px; text-align: center; font-weight: 600;">ดู</th>
+                  <th style="padding: 2px 4px; text-align: center; font-weight: 600;">แก้ไข</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid rgba(0,0,0,0.04);">
+                  <td style="padding: 3px 4px;">📊 แดชบอร์ด</td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="dashboard" data-perm="read" ${hasDashboardRead}></td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="dashboard" data-perm="write" ${hasDashboardWrite}></td>
+                </tr>
+                <tr style="border-bottom: 1px solid rgba(0,0,0,0.04);">
+                  <td style="padding: 3px 4px;">📂 โครงการ</td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="projects-list" data-perm="read" ${hasProjectsRead}></td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="projects-list" data-perm="write" ${hasProjectsWrite}></td>
+                </tr>
+                <tr>
+                  <td style="padding: 3px 4px;">⚙️ จัดการระบบ</td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="admin-panel" data-perm="read" ${hasAdminRead}></td>
+                  <td style="padding: 3px 4px; text-align: center;"><input type="checkbox" class="perm-chk" data-id="${u.id}" data-view="admin-panel" data-perm="write" ${hasAdminWrite}></td>
+                </tr>
+              </tbody>
+            </table>
           </td>
           <td>
             ${isSelf ? '-' : `
@@ -4529,15 +4551,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
-      // Bind view permission checkboxes
-      document.querySelectorAll('.permission-checkbox').forEach(cb => {
+      // Bind view/edit permission checkboxes
+      document.querySelectorAll('.perm-chk').forEach(cb => {
         cb.addEventListener('change', async () => {
           const uid = cb.getAttribute('data-id');
-          const userCheckboxes = document.querySelectorAll(`.permission-checkbox[data-id="${uid}"]`);
+          const userCheckboxes = document.querySelectorAll(`.perm-chk[data-id="${uid}"]`);
           const allowed = [];
           userCheckboxes.forEach(box => {
             if (box.checked) {
-              allowed.push(box.getAttribute('data-view'));
+              const view = box.getAttribute('data-view');
+              const perm = box.getAttribute('data-perm');
+              allowed.push(`${view}:${perm}`);
             }
           });
           const allowedViewsStr = allowed.join(',');

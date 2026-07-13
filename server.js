@@ -572,6 +572,12 @@ async function checkProjectAccess(userId, role, projectId) {
 async function checkProjectEditAccess(userId, role, projectId) {
   if (role === 'Admin') return true;
   
+  // Check page-level write permission
+  const user = await dbGet('SELECT allowed_views FROM users WHERE id = ?', [userId]);
+  if (!user) return false;
+  const allowed = (user.allowed_views || '').split(',').map(v => v.trim());
+  if (!allowed.includes('projects-list:write')) return false;
+  
   // Project Submitter (Staff) and Executive can edit only if they have Write permission assigned
   const assignment = await dbGet(
     "SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ? AND permission_type = 'Write'",
@@ -686,8 +692,18 @@ app.get('/api/projects', requireLogin, async (req, res) => {
       params.push(userId);
     }
 
+    const user = await dbGet('SELECT allowed_views FROM users WHERE id = ?', [userId]);
+    const allowed = (user ? user.allowed_views : '').split(',').map(v => v.trim());
+    const hasWritePermission = role === 'Admin' || allowed.includes('projects-list:write');
+
     const projects = await dbAll(query, params);
-    res.json(projects);
+    const result = projects.map(p => {
+      if (!hasWritePermission) {
+        p.can_edit = 0;
+      }
+      return p;
+    });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
