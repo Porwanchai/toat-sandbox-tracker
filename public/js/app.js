@@ -132,6 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
     reportCommentsList: document.getElementById('report-comments-list'),
     addCommentForm: document.getElementById('add-comment-form'),
     commentTextInput: document.getElementById('comment-text-input'),
+    rpExecStatusChangeBox: document.getElementById('rp-exec-status-change-box'),
+    rpBtnApproveReport: document.getElementById('rp-btn-approve-report'),
+    rpBtnRejectReport: document.getElementById('rp-btn-reject-report'),
+    rpReportCommentsList: document.getElementById('rp-report-comments-list'),
+    rpAddCommentForm: document.getElementById('rp-add-comment-form'),
+    rpCommentTextInput: document.getElementById('rp-comment-text-input'),
     
     // Admin View
     adminUsersTableBody: document.getElementById('admin-users-table-body'),
@@ -4096,6 +4102,38 @@ document.addEventListener('DOMContentLoaded', () => {
       if (rpEmailInput) rpEmailInput.value = '';
       if (rpEmailStatus) { rpEmailStatus.className = 'rp-email-status hidden'; rpEmailStatus.textContent = ''; }
 
+      // Render Comments in modal
+      elements.rpReportCommentsList.innerHTML = '';
+      if (!data.comments || data.comments.length === 0) {
+        elements.rpReportCommentsList.innerHTML = '<div class="no-comments">ยังไม่มีผู้บริหารเขียนข้อเสนอแนะเพิ่มเติมสำหรับรายงานฉบับนี้</div>';
+      } else {
+        data.comments.forEach(c => {
+          const card = document.createElement('div');
+          card.className = `comment-card role-${c.role}`;
+          card.innerHTML = `
+            <div class="comment-meta">
+              <strong>${c.commenter_name} (${c.role})</strong>
+              <span>${formatDate(c.created_at)}</span>
+            </div>
+            <div class="comment-body">${c.comment_text}</div>
+          `;
+          elements.rpReportCommentsList.appendChild(card);
+        });
+      }
+
+      // Executive actions box visibility in modal
+      const isExecutiveOrAdmin = ['Admin', 'Executive'].includes(state.currentUser.role);
+      const isSubmitted = data.report.status === 'Submitted';
+
+      if (isExecutiveOrAdmin && isSubmitted) {
+        elements.rpExecStatusChangeBox.classList.remove('hidden');
+      } else {
+        elements.rpExecStatusChangeBox.classList.add('hidden');
+      }
+
+      // Reset comment input
+      elements.rpCommentTextInput.value = '';
+
       // Show modal
       modalReportPreview.showModal();
       // Scroll to top of modal body
@@ -4407,6 +4445,62 @@ document.addEventListener('DOMContentLoaded', () => {
       await API.reports.addComment(state.activeReportId, comment);
       elements.commentTextInput.value = '';
       loadReportDetailData(); // Reload comments
+    } catch (err) {
+      alert('ไม่สามารถส่งความคิดเห็นได้: ' + err.message);
+    }
+  });
+
+  // Modal Executive Action: Approve Report
+  elements.rpBtnApproveReport.addEventListener('click', async () => {
+    try {
+      await API.reports.updateStatus(state.activeReportId, 'Approved');
+      alert('อนุมัติรายงานความคืบหน้าฉบับนี้เรียบร้อยแล้ว');
+      openReportPreviewModal(state.activeReportId); // Reload modal data
+      if (state.activeView === 'dashboard') {
+        loadDashboardData();
+      } else if (state.activeView === 'project-workspace') {
+        loadWorkspaceData();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // Modal Executive Action: Reject / Send back to Draft
+  elements.rpBtnRejectReport.addEventListener('click', async () => {
+    const comment = prompt('กรุณาระบุความคิดเห็น / เหตุผลที่ต้องการให้แก้ไขปรับปรุงรายงานประจำเดือนนี้ (จำเป็นต้องระบุ):');
+    if (comment === null) return; // User cancelled
+    
+    const reason = comment.trim();
+    if (!reason) {
+      alert('ไม่สามารถส่งกลับแก้ไขได้: คุณจำเป็นต้องป้อนเหตุผล/ความคิดเห็นในการร้องขอให้ปรับปรุงรายงาน');
+      return;
+    }
+
+    try {
+      await API.reports.updateStatus(state.activeReportId, 'Draft', reason);
+      alert('ส่งรายงานความคืบหน้ากลับให้ผู้รับผิดชอบโครงการแก้ไขเรียบร้อยแล้ว');
+      openReportPreviewModal(state.activeReportId); // Reload modal data
+      if (state.activeView === 'dashboard') {
+        loadDashboardData();
+      } else if (state.activeView === 'project-workspace') {
+        loadWorkspaceData();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // Modal Submit Comments
+  elements.rpAddCommentForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const comment = elements.rpCommentTextInput.value.trim();
+    if (!comment) return;
+
+    try {
+      await API.reports.addComment(state.activeReportId, comment);
+      elements.rpCommentTextInput.value = '';
+      openReportPreviewModal(state.activeReportId); // Reload modal comments
     } catch (err) {
       alert('ไม่สามารถส่งความคิดเห็นได้: ' + err.message);
     }

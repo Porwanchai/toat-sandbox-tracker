@@ -927,6 +927,35 @@
                 </div>
               </div><!-- /a4-sheet -->
             </div><!-- /rp-a4-wrapper -->
+
+            <!-- Modal Comments & Approval Section (Below A4, No Print) -->
+            <div class="feedback-comments-card card glassmorphism no-print margin-top-xl" style="max-width: 900px; margin: 2rem auto; padding: 1.5rem;">
+              <div class="section-header">
+                <h3><i class="fa-solid fa-comments"></i> ความคิดเห็นและข้อเสนอแนะอย่างเป็นทางการโดยผู้บริหาร (Executive Comments)</h3>
+              </div>
+              
+              <!-- Executive Approval actions -->
+              <div class="exec-actions-box hidden" id="rp-exec-status-change-box">
+                <p>จัดการสถานะอนุมัติเอกสารรายงานนี้:</p>
+                <button class="btn btn-success" id="rp-btn-approve-report"><i class="fa-solid fa-check"></i> อนุมัติรายงานนี้ (Approve)</button>
+                <button class="btn btn-warning" id="rp-btn-reject-report"><i class="fa-solid fa-circle-xmark"></i> ส่งกลับแก้ไข (Reject to Draft)</button>
+              </div>
+
+              <!-- Comments Thread list -->
+              <div class="comments-list" id="rp-report-comments-list">
+                <!-- Dynamic comments -->
+                <div class="no-comments">ยังไม่มีผู้บริหารเขียนข้อเสนอแนะเพิ่มเติมสำหรับรายงานฉบับนี้</div>
+              </div>
+
+              <!-- Add Comment Form -->
+              <form id="rp-add-comment-form" class="comment-form">
+                <div class="form-group">
+                  <label for="rp-comment-text-input">เขียนข้อเสนอแนะอย่างเป็นทางการ:</label>
+                  <textarea id="rp-comment-text-input" required placeholder="ป้อนข้อแนะนำ คำถาม หรือผลตอบรับเพื่อแจ้งแก่ผู้รับผิดชอบโครงการ..." rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> ส่งข้อเสนอแนะ</button>
+              </form>
+            </div>
           </div><!-- /rp-modal-body -->
 
           <!-- Modal Bottom Action Bar -->
