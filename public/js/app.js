@@ -3719,6 +3719,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const reports = await API.reports.list(pid);
       state.activeProjectReports = reports;
       elements.wsReportsTableBody.innerHTML = '';
+      const canEdit = state.canEditActiveProject;
 
       if (reports.length === 0) {
         elements.wsReportsTableBody.innerHTML = '<tr><td colspan="6" class="text-center">ยังไม่มีการยื่นสรุปรายงานประจำเดือน</td></tr>';
@@ -3743,9 +3744,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="btn btn-primary btn-xs view-report-preview-btn" data-id="${r.id}" title="ดูรายงานแบบ Popup">
                 <i class="fa-solid fa-eye"></i> ดูรายงาน
               </button>
-              <button class="btn btn-warning btn-xs edit-report-btn" data-id="${r.id}" data-month="${r.report_month_year}" title="แก้ไขรายงานนี้">
-                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
-              </button>
+              ${canEdit ? `
+                <button class="btn btn-warning btn-xs edit-report-btn" data-id="${r.id}" data-month="${r.report_month_year}" title="แก้ไขรายงานนี้">
+                  <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                </button>
+              ` : ''}
               <button class="btn btn-secondary btn-xs view-report-fullpage-btn" data-id="${r.id}" title="เปิดหน้าเต็ม">
                 <i class="fa-solid fa-expand"></i>
               </button>
