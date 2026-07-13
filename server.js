@@ -565,8 +565,9 @@ async function checkProjectAccess(userId, role, projectId) {
 // Helper: Check if user has permission to edit project (Write access)
 async function checkProjectEditAccess(userId, role, projectId) {
   if (role === 'Admin') return true;
+  if (role === 'Executive') return false; // Executive can never edit
   
-  // Project Submitter (Staff) and Executive can edit only if they have Write permission assigned
+  // Project Submitter (Staff) can edit only if they have Write permission assigned
   const assignment = await dbGet(
     "SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ? AND permission_type = 'Write'",
     [projectId, userId]
@@ -663,6 +664,7 @@ app.get('/api/projects', requireLogin, async (req, res) => {
         (
           CASE 
             WHEN ? = 'Admin' THEN 1
+            WHEN ? = 'Executive' THEN 0
             ELSE EXISTS (
               SELECT 1 FROM project_assignments pa 
               WHERE pa.project_id = p.id AND pa.user_id = ? AND pa.permission_type = 'Write'
@@ -671,7 +673,7 @@ app.get('/api/projects', requireLogin, async (req, res) => {
         ) as can_edit
       FROM projects p
     `;
-    let params = [reportMonthYear, role, userId];
+    let params = [reportMonthYear, role, role, userId];
 
     const projects = await dbAll(query, params);
     res.json(projects);
