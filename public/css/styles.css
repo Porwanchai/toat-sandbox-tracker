@@ -551,11 +551,7 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Notification Droplist inside sidebar */
-.notification-item {
-  position: relative;
-}
-
+/* Notification Toggle inside sidebar */
 #notification-toggle {
   display: flex;
   align-items: center;

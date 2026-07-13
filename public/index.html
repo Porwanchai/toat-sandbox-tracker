@@ -144,25 +144,12 @@
               <i class="fa-solid fa-gears"></i> จัดการระบบ (Admin)
             </a>
           </li>
-          <li class="notification-item">
-            <a href="#" id="notification-toggle">
-              <i class="fa-solid fa-bell"></i> แจ้งเตือน
+          <li>
+            <a href="#" class="nav-link" id="notification-toggle">
+              <i class="fa-solid fa-bell"></i>
+              <span style="flex: 1; text-align: left;">แจ้งเตือน</span>
               <span class="noti-count hidden" id="noti-badge">0</span>
             </a>
-            <!-- Backdrop for floating modal style notifications -->
-            <div class="noti-backdrop hidden" id="noti-backdrop"></div>
-            <div class="noti-dropdown glassmorphism hidden" id="noti-dropdown">
-              <div class="noti-header">
-                <h3>การแจ้งเตือน</h3>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <button class="btn btn-text btn-xs" id="clear-notifications" style="font-size:0.78rem;">อ่านทั้งหมด</button>
-                  <button type="button" id="noti-close-btn" aria-label="ปิด" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 0.25rem;">&times;</button>
-                </div>
-              </div>
-              <ul id="noti-list">
-                <li class="empty-noti">ไม่มีการแจ้งเตือนค้างอยู่</li>
-              </ul>
-            </div>
           </li>
         </ul>
       </nav>
@@ -1172,9 +1159,21 @@
     </main>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL WINDOWS (Using native <dialog>)       -->
-  <!-- ========================================== -->
+  <!-- Backdrop for floating modal style notifications -->
+  <div class="noti-backdrop hidden" id="noti-backdrop"></div>
+  <!-- Floating notifications popup -->
+  <div class="noti-dropdown glassmorphism hidden" id="noti-dropdown">
+    <div class="noti-header">
+      <h3>การแจ้งเตือน</h3>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <button class="btn btn-text btn-xs" id="clear-notifications" style="font-size:0.78rem;">อ่านทั้งหมด</button>
+        <button type="button" id="noti-close-btn" aria-label="ปิด" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 0.25rem;">&times;</button>
+      </div>
+    </div>
+    <ul id="noti-list">
+      <li class="empty-noti">ไม่มีการแจ้งเตือนค้างอยู่</li>
+    </ul>
+  </div>
 
   <!-- Modal: Pending Approvals Alert -->
   <dialog id="modal-pending-approvals" closedby="any" aria-labelledby="lbl-pending-approvals">
