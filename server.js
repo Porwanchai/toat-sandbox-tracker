@@ -386,8 +386,8 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Register (Default role: Project Submitter / Staff)
 app.post('/api/auth/register', async (req, res) => {
-  const { username, email, password, employee_id, division, department, line_id, phone_number } = req.body;
-  if (!username || !email || !password || !employee_id || !division || !department || !line_id || !phone_number) {
+  const { username, email, password, employee_id, division, department, line_id, phone_number, user_type, registered_project } = req.body;
+  if (!username || !email || !password || !employee_id || !division || !department || !line_id || !phone_number || !user_type) {
     return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง' });
   }
   try {
@@ -397,17 +397,31 @@ app.post('/api/auth/register', async (req, res) => {
     }
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
-    const role = 'Project Submitter'; // Default registration role
+    
+    let role = 'Project Submitter';
+    let regProj = null;
+    let allowedViews = 'dashboard,projects-list';
 
-    await dbRun('INSERT INTO users (username, email, password_hash, role, employee_id, division, department, line_id, phone_number, is_approved, allowed_views) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)', [
-      username, email, hash, role, employee_id, division, department, line_id, phone_number, 'dashboard,projects-list'
+    if (user_type === 'Executive') {
+      role = 'Executive';
+    } else if (user_type === 'ProjectStaff') {
+      role = 'Project Submitter';
+      regProj = registered_project || null;
+    } else {
+      role = 'Project Submitter';
+    }
+
+    await dbRun('INSERT INTO users (username, email, password_hash, role, employee_id, division, department, line_id, phone_number, is_approved, allowed_views, registered_project) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)', [
+      username, email, hash, role, employee_id, division, department, line_id, phone_number, allowedViews, regProj
     ]);
 
     // Send email to all Admins
     try {
       const adminEmails = await getAdminEmails();
       const subject = `[TOAT Sandbox] มีผู้ลงทะเบียนใหม่รอการอนุมัติ: ${username}`;
-      const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+      const userTypeLabel = user_type === 'Executive' ? 'ผู้บริหาร' : (user_type === 'SandboxStaff' ? 'เจ้าหน้าที่ sandbox' : 'เจ้าหน้าที่โครงการ');
+      const projLabel = regProj ? `\n- โครงการที่ขอสิทธิ์เข้าถึง: ${regProj}` : '';
+      const text = `เรียน ผู้ดูแลระบบ,\n\nมีผู้ใช้งานใหม่ลงทะเบียนสมัครเข้าระบบ TOAT Sandbox Tracker และกำลังรอการอนุมัติสิทธิ์เข้าใช้งาน:\n\n- ชื่อผู้ใช้: ${username}\n- อีเมล: ${email}\n- บทบาท/ตำแหน่งที่ลงทะเบียน: ${userTypeLabel}${projLabel}\n- รหัสพนักงาน: ${employee_id}\n- กอง/ฝ่าย: ${department} / ${division}\n- เบอร์โทรศัพท์: ${phone_number}\n- Line ID: ${line_id}\n\nกรุณาเข้าสู่ระบบในหน้าจัดการระบบ (Admin Panel) เพื่อตรวจสอบและดำเนินการอนุมัติสิทธิ์การใช้งาน.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
       
       for (const adminEmail of adminEmails) {
         sendEmailNotification(adminEmail, subject, text).catch(err => console.error(`Failed to notify admin ${adminEmail} about new user registration:`, err));
@@ -1722,7 +1736,7 @@ app.post('/api/reports/:reportId/comments', requireLogin, async (req, res) => {
 // List all users
 app.get('/api/admin/users', requireLogin, requireRole(['Admin']), async (req, res) => {
   try {
-    const users = await dbAll('SELECT id, username, email, role, employee_id, division, department, line_id, phone_number, is_approved, allowed_views, created_at FROM users');
+    const users = await dbAll('SELECT id, username, email, role, employee_id, division, department, line_id, phone_number, is_approved, allowed_views, registered_project, created_at FROM users');
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1732,7 +1746,7 @@ app.get('/api/admin/users', requireLogin, requireRole(['Admin']), async (req, re
 // Get pending approval users
 app.get('/api/admin/pending-users', requireLogin, requireRole(['Admin']), async (req, res) => {
   try {
-    const users = await dbAll('SELECT id, username, email, role, employee_id, division, department, line_id, phone_number, created_at FROM users WHERE is_approved = 0');
+    const users = await dbAll('SELECT id, username, email, role, employee_id, division, department, line_id, phone_number, registered_project, created_at FROM users WHERE is_approved = 0');
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });

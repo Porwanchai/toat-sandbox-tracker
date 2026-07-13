@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
     appContainer: document.getElementById('app-container'),
     loginForm: document.getElementById('login-form'),
     registerForm: document.getElementById('register-form'),
+    registerUserType: document.getElementById('register-user-type'),
+    registerProjectName: document.getElementById('register-project-name'),
+    registerProjectNameGroup: document.getElementById('register-project-name-group'),
     forgotForm: document.getElementById('forgot-form'),
     
     goRegister: document.getElementById('go-register'),
@@ -514,6 +517,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Toggle project name input based on user type selection
+  if (elements.registerUserType) {
+    elements.registerUserType.addEventListener('change', () => {
+      if (elements.registerUserType.value === 'ProjectStaff') {
+        elements.registerProjectNameGroup.classList.remove('hidden');
+        elements.registerProjectName.setAttribute('required', 'true');
+      } else {
+        elements.registerProjectNameGroup.classList.add('hidden');
+        elements.registerProjectName.removeAttribute('required');
+        elements.registerProjectName.value = '';
+      }
+    });
+  }
+
   // Handle Registration
   elements.registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -525,10 +542,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const dept = document.getElementById('register-department').value;
     const line = document.getElementById('register-line-id').value;
     const tel = document.getElementById('register-phone-number').value;
+    const userType = elements.registerUserType.value;
+    const projectName = elements.registerProjectName.value;
     try {
-      await API.auth.register(u, em, p, emp, div, dept, line, tel);
+      await API.auth.register(u, em, p, emp, div, dept, line, tel, userType, projectName);
       alert('ลงทะเบียนสำเร็จแล้ว! บัญชีของคุณอยู่ระหว่างรอผู้ดูแลระบบ (Admin) อนุมัติสิทธิ์เข้าใช้งาน');
       elements.registerForm.reset();
+      // Ensure state is clean after reset
+      if (elements.registerProjectNameGroup) {
+        elements.registerProjectNameGroup.classList.remove('hidden');
+        elements.registerProjectName.setAttribute('required', 'true');
+      }
       // Switch to login
       elements.registerForm.classList.add('hidden');
       elements.loginForm.classList.remove('hidden');
@@ -4365,8 +4389,17 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.pendingUsersTableBody.innerHTML = '';
         pending.forEach(u => {
           const tr = document.createElement('tr');
+          const roleLabel = u.role === 'Executive' ? 'ผู้บริหาร (Executive)' : (u.registered_project ? 'เจ้าหน้าที่โครงการ' : 'เจ้าหน้าที่ sandbox');
+          const badgeClass = u.role === 'Executive' ? 'approved' : (u.registered_project ? 'in-progress' : 'completed');
           tr.innerHTML = `
-            <td><strong>${u.username}</strong><br><small>${u.email}</small></td>
+            <td>
+              <strong>${u.username}</strong><br>
+              <small>${u.email}</small><br>
+              <span class="badge ${badgeClass}" style="font-size: 0.72rem; margin-top: 3px; display: inline-block;">
+                ${roleLabel}
+              </span>
+              ${u.registered_project ? `<br><small style="color:var(--text-muted); font-size:0.75rem;">โครงการที่ระบุ: <strong>${u.registered_project}</strong></small>` : ''}
+            </td>
             <td>${u.employee_id || '-'}</td>
             <td>${u.division || '-'}</td>
             <td>${u.department || '-'}</td>
@@ -4468,7 +4501,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>
             <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-              <button class="btn btn-secondary btn-xs view-user-detail-btn" data-id="${u.id}" data-username="${u.username}" data-email="${u.email}" data-empid="${u.employee_id || '-'}" data-division="${u.division || '-'}" data-dept="${u.department || '-'}" data-lineid="${u.line_id || '-'}" data-phone="${u.phone_number || '-'}" data-approved="${u.is_approved === 1 ? 'อนุมัติแล้ว' : 'รออนุมัติ'}" data-role="${u.role}">ดูรายละเอียด</button>
+              <button class="btn btn-secondary btn-xs view-user-detail-btn" data-id="${u.id}" data-username="${u.username}" data-email="${u.email}" data-empid="${u.employee_id || '-'}" data-division="${u.division || '-'}" data-dept="${u.department || '-'}" data-lineid="${u.line_id || '-'}" data-phone="${u.phone_number || '-'}" data-approved="${u.is_approved === 1 ? 'อนุมัติแล้ว' : 'รออนุมัติ'}" data-role="${u.role}" data-regproject="${u.registered_project || ''}">ดูรายละเอียด</button>
               <button class="btn btn-warning btn-xs reset-user-pw-btn" data-id="${u.id}" data-username="${u.username}">รีเซ็ตรหัส</button>
             </div>
           </td>
@@ -4534,6 +4567,15 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('detail-lineid').textContent = btn.getAttribute('data-lineid');
           document.getElementById('detail-phone').textContent = btn.getAttribute('data-phone');
           document.getElementById('detail-approved').textContent = btn.getAttribute('data-approved');
+
+          const regProj = btn.getAttribute('data-regproject');
+          const rowRegProject = document.getElementById('row-detail-reg-project');
+          if (regProj && regProj !== 'null' && regProj.trim() !== '') {
+            document.getElementById('detail-reg-project').textContent = regProj;
+            rowRegProject.style.display = '';
+          } else {
+            rowRegProject.style.display = 'none';
+          }
 
           // badge class tuning
           const roleClass = btn.getAttribute('data-role') === 'Admin' ? 'completed' : (btn.getAttribute('data-role') === 'Executive' ? 'approved' : 'in-progress');

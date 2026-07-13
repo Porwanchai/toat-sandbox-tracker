@@ -59,6 +59,19 @@
           <input type="password" id="register-password" required placeholder="อย่างน้อย 6 ตัวอักษร">
         </div>
         
+        <div class="form-group">
+          <label for="register-user-type"><i class="fa-solid fa-user-tag"></i> ประเภทผู้ใช้งาน</label>
+          <select id="register-user-type" required style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-card); background: #fff; font-size: 0.95rem;">
+            <option value="ProjectStaff" selected>เจ้าหน้าที่โครงการ (Project Staff)</option>
+            <option value="Executive">ผู้บริหาร (Executive)</option>
+            <option value="SandboxStaff">เจ้าหน้าที่ sandbox</option>
+          </select>
+        </div>
+        <div class="form-group" id="register-project-name-group">
+          <label for="register-project-name"><i class="fa-solid fa-diagram-project"></i> ชื่อโครงการ</label>
+          <input type="text" id="register-project-name" required placeholder="ระบุชื่อโครงการเพื่อดำเนินการขอสิทธิ์เข้าถึง">
+        </div>
+        
         <!-- ข้อมูลสำคัญประวัติพนักงาน -->
         <div class="form-group">
           <label for="register-employee-id"><i class="fa-solid fa-id-card"></i> รหัสพนักงาน</label>
@@ -1500,6 +1513,7 @@
             <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">ฝ่าย/สำนัก:</td><td style="padding: 8px;" id="detail-department">-</td></tr>
             <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">Line ID:</td><td style="padding: 8px;" id="detail-lineid">-</td></tr>
             <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">เบอร์โทรศัพท์:</td><td style="padding: 8px;" id="detail-phone">-</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);" id="row-detail-reg-project"><td style="padding: 8px; font-weight: bold;">โครงการที่สมัครสิทธิ์:</td><td style="padding: 8px;" id="detail-reg-project">-</td></tr>
             <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px; font-weight: bold;">สถานะอนุมัติสิทธิ์:</td><td style="padding: 8px;" id="detail-approved">-</td></tr>
           </tbody>
         </table>

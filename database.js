@@ -83,6 +83,7 @@ async function initDatabase() {
       is_approved INTEGER DEFAULT 0,
       allowed_views TEXT DEFAULT 'dashboard,projects-list',
       photo_path TEXT,
+      registered_project TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -312,6 +313,9 @@ async function initDatabase() {
     const usersColsLatest = await dbAll("PRAGMA table_info(users)");
     if (!usersColsLatest.some(c => c.name === 'photo_path')) {
       await dbRun("ALTER TABLE users ADD COLUMN photo_path TEXT");
+    }
+    if (!usersColsLatest.some(c => c.name === 'registered_project')) {
+      await dbRun("ALTER TABLE users ADD COLUMN registered_project TEXT");
     }
 
     // 18. Run Migrations for Monthly Reports new columns

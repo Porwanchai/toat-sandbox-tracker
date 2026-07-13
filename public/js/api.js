@@ -20,11 +20,11 @@ const API = {
       if (!res.ok) throw new Error(data.error || 'Login failed');
       return data;
     },
-    async register(username, email, password, employee_id, division, department, line_id, phone_number) {
+    async register(username, email, password, employee_id, division, department, line_id, phone_number, user_type, registered_project) {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, employee_id, division, department, line_id, phone_number })
+        body: JSON.stringify({ username, email, password, employee_id, division, department, line_id, phone_number, user_type, registered_project })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
