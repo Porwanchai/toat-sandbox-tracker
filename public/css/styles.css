@@ -2297,9 +2297,13 @@ dialog form {
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.15);
   background: #fff;
-  display: flex;
   flex-direction: column;
   animation: rpModalIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Only show (and flex-layout) when the dialog is actually open */
+.report-preview-modal[open] {
+  display: flex;
 }
 
 @keyframes rpModalIn {
