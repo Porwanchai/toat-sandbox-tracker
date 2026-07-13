@@ -188,11 +188,12 @@ async function initDatabase() {
       FOREIGN KEY (report_id) REFERENCES monthly_reports (id) ON DELETE CASCADE
     )`);
 
-    // 9. Project Assignments Table (to restrict Staff access to assigned projects)
+    // 9. Project Assignments Table (to restrict Staff/Executive access to assigned projects)
     await dbRun(`CREATE TABLE IF NOT EXISTS project_assignments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       project_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
+      permission_type TEXT CHECK(permission_type IN ('Read', 'Write')) NOT NULL DEFAULT 'Write',
       UNIQUE(project_id, user_id),
       FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -335,6 +336,12 @@ async function initDatabase() {
     const reportColsV19 = await dbAll("PRAGMA table_info(monthly_reports)");
     if (!reportColsV19.some(c => c.name === 'report_file_name')) {
       await dbRun("ALTER TABLE monthly_reports ADD COLUMN report_file_name TEXT");
+    }
+
+    // 20. Run Migrations for permission_type column in project_assignments table
+    const paColsLatest = await dbAll("PRAGMA table_info(project_assignments)");
+    if (!paColsLatest.some(c => c.name === 'permission_type')) {
+      await dbRun("ALTER TABLE project_assignments ADD COLUMN permission_type TEXT DEFAULT 'Write'");
     }
 
     console.log('All database tables initialized.');

@@ -1086,9 +1086,16 @@
                     </select>
                   </div>
                   <div class="form-group">
-                    <label for="assign-user-id">เลือกชื่อผู้ใช้พนักงาน (Staff):</label>
+                    <label for="assign-user-id">เลือกผู้ใช้งาน (Staff / Executive):</label>
                     <select id="assign-user-id" required>
-                      <!-- Dynamic select of staff users -->
+                      <!-- Dynamic select of staff/executive users -->
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="assign-permission-type">ระดับสิทธิ์การเข้าถึงโครงการ:</label>
+                    <select id="assign-permission-type" required>
+                      <option value="Write">ดูและแก้ไข/ดำเนินการโครงการได้ (Read-Write)</option>
+                      <option value="Read">ดูข้อมูลได้อย่างเดียว (Read-Only)</option>
                     </select>
                   </div>
                   <button type="submit" class="btn btn-success">ยืนยันมอบหมายโครงการ</button>
@@ -1101,7 +1108,8 @@
                       <tr>
                         <th>ชื่อโครงการ</th>
                         <th>ผู้ได้รับสิทธิ์</th>
-                        <th>อีเมล</th>
+                        <th>อีเมล (บทบาท)</th>
+                        <th>ระดับสิทธิ์</th>
                         <th>ยกเลิกสิทธิ์</th>
                       </tr>
                     </thead>

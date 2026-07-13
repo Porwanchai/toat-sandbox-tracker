@@ -543,19 +543,24 @@ app.put('/api/users/change-password', requireLogin, async (req, res) => {
 // PROJECT ENDPOINTS
 // ----------------------------------------------------
 
-// Helper: Check if user has access to project (Read access - allowed for any logged-in user)
+// Helper: Check if user has access to project (Read access - allowed for Admins, and users assigned to the project)
 async function checkProjectAccess(userId, role, projectId) {
-  return true;
+  if (role === 'Admin') return true;
+  
+  const assignment = await dbGet(
+    'SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ?',
+    [projectId, userId]
+  );
+  return !!assignment;
 }
 
 // Helper: Check if user has permission to edit project (Write access)
 async function checkProjectEditAccess(userId, role, projectId) {
   if (role === 'Admin') return true;
-  if (role === 'Executive') return false; // Executive can never edit
   
-  // Project Submitter (Staff) can only edit assigned projects
+  // Project Submitter (Staff) and Executive can edit only if they have Write permission assigned
   const assignment = await dbGet(
-    'SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ?',
+    "SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ? AND permission_type = 'Write'",
     [projectId, userId]
   );
   return !!assignment;
@@ -650,16 +655,22 @@ app.get('/api/projects', requireLogin, async (req, res) => {
         (
           CASE 
             WHEN ? = 'Admin' THEN 1
-            WHEN ? = 'Project Submitter' AND EXISTS (
+            ELSE EXISTS (
               SELECT 1 FROM project_assignments pa 
-              WHERE pa.project_id = p.id AND pa.user_id = ?
-            ) THEN 1
-            ELSE 0
+              WHERE pa.project_id = p.id AND pa.user_id = ? AND pa.permission_type = 'Write'
+            )
           END
         ) as can_edit
       FROM projects p
     `;
-    let params = [reportMonthYear, role, role, userId];
+    let params = [reportMonthYear, role, userId];
+
+    if (role !== 'Admin') {
+      query += `
+        WHERE p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
+      `;
+      params.push(userId);
+    }
 
     const projects = await dbAll(query, params);
     res.json(projects);
@@ -1841,19 +1852,20 @@ app.post('/api/admin/settings', requireLogin, requireRole(['Admin']), async (req
   }
 });
 
-// Assign project to staff user (Admin only)
+// Assign project to user (Admin only)
 app.post('/api/admin/assignments', requireLogin, requireRole(['Admin']), async (req, res) => {
-  const { project_id, user_id } = req.body;
+  const { project_id, user_id, permission_type } = req.body;
   if (!project_id || !user_id) {
     return res.status(400).json({ error: 'ต้องการข้อมูลโครงการและชื่อเจ้าหน้าที่' });
   }
+  const permType = permission_type === 'Read' ? 'Read' : 'Write';
   try {
-    const user = await dbGet("SELECT id FROM users WHERE id = ? AND role = 'Project Submitter'", [user_id]);
+    const user = await dbGet("SELECT id, role FROM users WHERE id = ? AND role IN ('Project Submitter', 'Executive')", [user_id]);
     if (!user) {
-      return res.status(404).json({ error: 'ไม่พบผู้ใช้บทบาท Staff (Project Submitter) คนนี้' });
+      return res.status(404).json({ error: 'ไม่พบผู้ใช้บทบาท Staff หรือ Executive คนนี้' });
     }
-    await dbRun('INSERT OR IGNORE INTO project_assignments (project_id, user_id) VALUES (?, ?)', [project_id, user.id]);
-    res.json({ message: 'Project assigned to staff successfully' });
+    await dbRun('INSERT OR REPLACE INTO project_assignments (project_id, user_id, permission_type) VALUES (?, ?, ?)', [project_id, user.id, permType]);
+    res.json({ message: 'Project assigned successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1863,7 +1875,7 @@ app.post('/api/admin/assignments', requireLogin, requireRole(['Admin']), async (
 app.get('/api/admin/assignments', requireLogin, requireRole(['Admin']), async (req, res) => {
   try {
     const assignments = await dbAll(`
-      SELECT pa.id, pa.project_id, p.project_name, u.username, u.email 
+      SELECT pa.id, pa.project_id, pa.permission_type, p.project_name, u.username, u.email, u.role
       FROM project_assignments pa
       JOIN projects p ON pa.project_id = p.id
       JOIN users u ON pa.user_id = u.id

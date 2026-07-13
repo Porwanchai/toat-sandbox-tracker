@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emailTestResultLog: document.getElementById('email-test-result-log'),
     assignProjectId: document.getElementById('assign-project-id'),
     assignUserId: document.getElementById('assign-user-id'),
+    assignPermissionType: document.getElementById('assign-permission-type'),
     adminAssignForm: document.getElementById('admin-assign-form'),
     adminAssignmentsTableBody: document.getElementById('admin-assignments-table-body'),
     adminNotifyEmailForm: document.getElementById('admin-notify-email-form'),
@@ -4576,12 +4577,13 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.assignProjectId.appendChild(opt);
       });
 
-      // 3.5 Load Staff users in Assign select options
-      elements.assignUserId.innerHTML = '<option value="">-- เลือกผู้ใช้ Staff --</option>';
-      users.filter(u => u.role === 'Project Submitter' && u.is_approved === 1).forEach(u => {
+      // 3.5 Load Staff and Executive users in Assign select options
+      elements.assignUserId.innerHTML = '<option value="">-- เลือกผู้ใช้ Staff / Executive --</option>';
+      users.filter(u => u.role !== 'Admin' && u.is_approved === 1).forEach(u => {
         const opt = document.createElement('option');
         opt.value = u.id;
-        opt.textContent = `${u.username} (${u.employee_id || 'ไม่มีรหัส'}) - ${u.department || 'ไม่มีฝ่าย'}`;
+        const roleText = u.role === 'Executive' ? 'ผู้บริหาร' : 'ทีมงาน Staff';
+        opt.textContent = `${u.username} (${roleText}) - ${u.department || 'ไม่มีฝ่าย'}`;
         elements.assignUserId.appendChild(opt);
       });
 
@@ -4664,16 +4666,21 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.adminAssignmentsTableBody.innerHTML = '';
 
       if (assignments.length === 0) {
-        elements.adminAssignmentsTableBody.innerHTML = '<tr><td colspan="4" class="text-center">ไม่มีการมอบหมายสิทธิ์ดูแลโครงการในขณะนี้</td></tr>';
+        elements.adminAssignmentsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">ไม่มีการมอบหมายสิทธิ์ดูแลโครงการในขณะนี้</td></tr>';
         return;
       }
 
       assignments.forEach(as => {
         const tr = document.createElement('tr');
+        const roleLbl = as.role === 'Executive' ? 'Executive' : 'Staff';
+        const permText = as.permission_type === 'Read' 
+          ? '<span class="badge delayed">อ่านอย่างเดียว (Read-Only)</span>' 
+          : '<span class="badge approved">ดูและแก้ไข (Read-Write)</span>';
         tr.innerHTML = `
           <td>${as.project_name}</td>
           <td><strong>${as.username}</strong></td>
-          <td>${as.email}</td>
+          <td>${as.email} <br><span class="text-muted" style="font-size:0.7rem;">(${roleLbl})</span></td>
+          <td>${permText}</td>
           <td>
             <button class="btn btn-danger btn-xs rm-assign-btn" data-id="${as.id}">ยกเลิกสิทธิ์</button>
           </td>
@@ -4714,10 +4721,15 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const projectId = elements.assignProjectId.value;
     const userId = elements.assignUserId.value;
+    const permissionType = elements.assignPermissionType.value;
 
     try {
-      await API.admin.createAssignment({ project_id: projectId, user_id: userId });
-      alert('มอบหมายโครงการให้เจ้าหน้าที่ดูแลเรียบร้อยแล้ว');
+      await API.admin.createAssignment({ 
+        project_id: projectId, 
+        user_id: userId,
+        permission_type: permissionType
+      });
+      alert('มอบหมายและกำหนดสิทธิ์ผู้ใช้กับโครงการเรียบร้อยแล้ว');
       elements.adminAssignForm.reset();
       loadAssignmentsData();
     } catch (err) {
