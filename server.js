@@ -604,12 +604,23 @@ app.get('/api/projects/stats', requireLogin, async (req, res) => {
       FROM projects p
       WHERE p.is_hidden = 0
     `;
-    let queryParams = [];
+    let budgetParams = [];
+    let statusParams = [];
+    if (role !== 'Admin') {
+      budgetQuery += ` AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)`;
+      statusQuery = `
+        SELECT p.status, COUNT(*) as count 
+        FROM projects p
+        WHERE p.is_hidden = 0 AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
+      `;
+      budgetParams.push(userId);
+      statusParams.push(userId);
+    }
 
     statusQuery += ` GROUP BY p.status`;
 
-    const budgetStats = await dbGet(budgetQuery, queryParams);
-    const statusCounts = await dbAll(statusQuery, queryParams);
+    const budgetStats = await dbGet(budgetQuery, budgetParams);
+    const statusCounts = await dbAll(statusQuery, statusParams);
 
     // Format status counts
     const statusCountsMap = { 'Not Started': 0, 'In Progress': 0, 'Delayed': 0, 'Completed': 0 };

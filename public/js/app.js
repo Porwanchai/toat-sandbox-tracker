@@ -323,6 +323,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   // ROUTING & VIEW NAVIGATION WITH HISTORY
   // ----------------------------------------------------
+  function getDefaultView() {
+    if (!state.currentUser) return 'dashboard';
+    if (state.currentUser.role === 'Admin') return 'dashboard';
+    
+    const allowedViews = (state.currentUser.allowed_views || '').split(',').map(v => v.trim());
+    const hasDashboard = allowedViews.includes('dashboard') || allowedViews.includes('dashboard:read') || allowedViews.includes('dashboard:write');
+    const hasProjects = allowedViews.includes('projects-list') || allowedViews.includes('projects-list:read') || allowedViews.includes('projects-list:write');
+    const hasAdmin = allowedViews.includes('admin-panel') || allowedViews.includes('admin-panel:read') || allowedViews.includes('admin-panel:write');
+    
+    if (hasDashboard) return 'dashboard';
+    if (hasProjects) return 'projects-list';
+    if (hasAdmin) return 'admin-panel';
+    return 'dashboard';
+  }
 
   function showView(viewName, skipHistoryPush = false) {
     // Check view permissions
@@ -390,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Global Back navigation events
   elements.backHomeBtn.addEventListener('click', () => {
     state.historyStack = []; // Clear stack
-    showView('dashboard');
+    showView(getDefaultView());
   });
 
   elements.backPrevBtn.addEventListener('click', () => {
@@ -399,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showView(prevView, true); // True to avoid pushing back onto history stack
     } else {
       // Default fallback if no history
-      showView('dashboard');
+      showView(getDefaultView());
     }
   });
 
@@ -488,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       elements.authContainer.classList.add('hidden');
       elements.appContainer.classList.remove('hidden');
-      showView('dashboard');
+      showView(getDefaultView());
       loadNotifications();
       resetIdleTimer();
     } catch (err) {
@@ -2775,7 +2789,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       alert('ไม่สามารถเปิดพื้นที่ทำงานได้: ' + err.message);
-      showView('dashboard');
+      showView(getDefaultView());
     }
   }
 
@@ -4081,7 +4095,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Header navigation buttons
   document.getElementById('rp-btn-back-home')?.addEventListener('click', () => {
     modalReportPreview.close();
-    showView('dashboard');
+    showView(getDefaultView());
   });
   document.getElementById('rp-btn-back-prev')?.addEventListener('click', () => {
     modalReportPreview.close();
