@@ -143,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
     assignUserId: document.getElementById('assign-user-id'),
     adminAssignForm: document.getElementById('admin-assign-form'),
     adminAssignmentsTableBody: document.getElementById('admin-assignments-table-body'),
+    adminNotifyEmailForm: document.getElementById('admin-notify-email-form'),
+    adminNotifyEmailInput: document.getElementById('admin-notify-email-input'),
+    adminNotifyEmailsTableBody: document.getElementById('admin-notify-emails-table-body'),
     modalPendingApprovals: document.getElementById('modal-pending-approvals'),
     pendingUsersTableBody: document.getElementById('pending-users-table-body'),
     
@@ -4617,6 +4620,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Check for pending approvals modal popup
       checkPendingApprovals();
 
+      // Load custom report notification emails list
+      loadNotificationEmailsData();
+
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการโหลดเมนูควบคุม Admin: ' + err.message);
     }
@@ -4918,6 +4924,64 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.close();
       } catch (err) {
         alert('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน: ' + err.message);
+      }
+    });
+  }
+
+  // Load Notification Emails List
+  async function loadNotificationEmailsData() {
+    try {
+      const emails = await API.admin.getNotificationEmails();
+      elements.adminNotifyEmailsTableBody.innerHTML = '';
+
+      if (emails.length === 0) {
+        elements.adminNotifyEmailsTableBody.innerHTML = '<tr><td colspan="3" class="text-center">ยังไม่มีอีเมลรับแจ้งเตือนในระบบ</td></tr>';
+        return;
+      }
+
+      emails.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${item.email}</strong></td>
+          <td>${formatDate(item.created_at)}</td>
+          <td style="text-align:center;">
+            <button class="btn btn-danger btn-xs delete-notify-email-btn" data-id="${item.id}">ลบออก</button>
+          </td>
+        `;
+        elements.adminNotifyEmailsTableBody.appendChild(tr);
+      });
+
+      // Bind delete buttons
+      document.querySelectorAll('.delete-notify-email-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (confirm('คุณต้องการลบอีเมลรับแจ้งเตือนนี้หรือไม่?')) {
+            try {
+              await API.admin.deleteNotificationEmail(btn.getAttribute('data-id'));
+              loadNotificationEmailsData();
+            } catch (err) {
+              alert(err.message);
+            }
+          }
+        });
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Bind form submit for report notification emails
+  if (elements.adminNotifyEmailForm) {
+    elements.adminNotifyEmailForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = elements.adminNotifyEmailInput.value.trim();
+      if (!email) return;
+
+      try {
+        await API.admin.addNotificationEmail(email);
+        elements.adminNotifyEmailForm.reset();
+        loadNotificationEmailsData();
+      } catch (err) {
+        alert(err.message);
       }
     });
   }

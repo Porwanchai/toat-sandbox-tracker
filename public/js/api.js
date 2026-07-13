@@ -408,6 +408,27 @@ const API = {
         throw new Error(errMsg);
       }
       return data;
+    },
+    async getNotificationEmails() {
+      const res = await fetch('/api/admin/notification-emails');
+      if (!res.ok) throw new Error('Failed to load notification emails');
+      return res.json();
+    },
+    async addNotificationEmail(email) {
+      const res = await fetch('/api/admin/notification-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to add notification email');
+      return data;
+    },
+    async deleteNotificationEmail(id) {
+      const res = await fetch(`/api/admin/notification-emails/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete notification email');
+      return data;
     }
   },
 

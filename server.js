@@ -161,6 +161,16 @@ async function notifyReportSubmission(projectId, reportMonthYear, reporterName) 
         sendEmailNotification(user.email, subject, text).catch(err => console.error(`Failed to notify user ${user.username} on report submission:`, err));
       }
     }
+
+    // Query all custom report notification emails
+    const customEmails = await dbAll("SELECT email FROM report_notification_emails");
+    for (const item of customEmails) {
+      if (item.email) {
+        const subject = `[TOAT Sandbox] แจ้งเตือน: มีการส่งรายงานความคืบหน้าโครงการ: ${project.project_name}`;
+        const text = `เรียน ผู้เกี่ยวข้อง,\n\nโครงการ "${project.project_name}" ได้ทำการบันทึกและยื่นส่งรายงานความคืบหน้าประจำรอบเดือน ${reportMonthYear} เรียบร้อยแล้ว\n\n- ผู้รายงาน: ${reporterName}\n- สถานะ: ยื่นส่งแล้ว (Submitted)\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(item.email, subject, text).catch(err => console.error(`Failed to notify custom email ${item.email} on report submission:`, err));
+      }
+    }
   } catch (error) {
     console.error('Error in notifyReportSubmission:', error);
   }
@@ -193,6 +203,16 @@ async function notifyReportStatusUpdate(reportId, status) {
         const subject = `[TOAT Sandbox] อัปเดตสถานะรายงานโครงการ: ${project.project_name}`;
         const text = `เรียน คุณ ${user.username} (ทีมงานผู้ดูแลโครงการ),\n\nรายงานความคืบหน้าประจำรอบเดือน ${report.report_month_year} ของโครงการ "${project.project_name}" ได้รับการปรับปรุงสถานะโดยผู้ดูแลระบบ/ผู้บริหารเรียบร้อยแล้ว:\n\n- สถานะใหม่: ${statusText}\n\nกรุณาเข้าสู่ระบบ TOAT Sandbox เพื่อตรวจสอบรายละเอียดหรือข้อเสนอแนะความเห็นเพิ่มเติม.\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
         sendEmailNotification(user.email, subject, text).catch(err => console.error(`Failed to notify user ${user.username} on status update:`, err));
+      }
+    }
+
+    // Query all custom report notification emails
+    const customEmails = await dbAll("SELECT email FROM report_notification_emails");
+    for (const item of customEmails) {
+      if (item.email) {
+        const subject = `[TOAT Sandbox] แจ้งเตือน: อัปเดตสถานะรายงานโครงการ: ${project.project_name}`;
+        const text = `เรียน ผู้เกี่ยวข้อง,\n\nรายงานความคืบหน้าประจำรอบเดือน ${report.report_month_year} ของโครงการ "${project.project_name}" ได้รับการปรับปรุงสถานะโดยผู้ดูแลระบบ/ผู้บริหารเรียบร้อยแล้ว:\n\n- สถานะใหม่: ${statusText}\n\nขอแสดงความนับถือ,\nระบบ TOAT Sandbox Tracker`;
+        sendEmailNotification(item.email, subject, text).catch(err => console.error(`Failed to notify custom email ${item.email} on status update:`, err));
       }
     }
   } catch (error) {
@@ -1859,6 +1879,43 @@ app.delete('/api/admin/assignments/:id', requireLogin, requireRole(['Admin']), a
   try {
     await dbRun('DELETE FROM project_assignments WHERE id = ?', [req.params.id]);
     res.json({ message: 'Assignment deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get report notification emails list
+app.get('/api/admin/notification-emails', requireLogin, requireRole(['Admin']), async (req, res) => {
+  try {
+    const list = await dbAll('SELECT * FROM report_notification_emails ORDER BY created_at DESC');
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add report notification email
+app.post('/api/admin/notification-emails', requireLogin, requireRole(['Admin']), async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'กรุณาระบุรูปแบบอีเมลที่ถูกต้อง' });
+  }
+  try {
+    await dbRun('INSERT INTO report_notification_emails (email) VALUES (?)', [email]);
+    res.json({ message: 'เพิ่มอีเมลรับการแจ้งเตือนสำเร็จ' });
+  } catch (error) {
+    if (error.message.includes('UNIQUE')) {
+      return res.status(400).json({ error: 'อีเมลนี้ถูกเพิ่มในระบบเรียบร้อยแล้ว' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete report notification email
+app.delete('/api/admin/notification-emails/:id', requireLogin, requireRole(['Admin']), async (req, res) => {
+  try {
+    await dbRun('DELETE FROM report_notification_emails WHERE id = ?', [req.params.id]);
+    res.json({ message: 'ลบอีเมลรับการแจ้งเตือนสำเร็จ' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

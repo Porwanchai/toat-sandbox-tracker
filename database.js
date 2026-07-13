@@ -214,6 +214,13 @@ async function initDatabase() {
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )`);
 
+    // 11b. Report Notification Emails Table
+    await dbRun(`CREATE TABLE IF NOT EXISTS report_notification_emails (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // 12. Run Migrations for Round 3 (Project Members & Stakeholders columns)
     const pmColumns = await dbAll("PRAGMA table_info(project_members)");
     if (!pmColumns.some(c => c.name === 'employee_id')) {
