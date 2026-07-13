@@ -368,6 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'project-workspace':
         loadWorkspaceData();
         break;
+      case 'monthly-report-detail':
+        loadReportDetailData();
+        break;
       case 'admin-panel':
         loadAdminPanelData();
         break;
