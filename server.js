@@ -557,26 +557,14 @@ app.put('/api/users/change-password', requireLogin, async (req, res) => {
 // PROJECT ENDPOINTS
 // ----------------------------------------------------
 
-// Helper: Check if user has access to project (Read access - allowed for Admins, and users assigned to the project)
+// Helper: Check if user has access to project (Read access - allowed for all logged-in users)
 async function checkProjectAccess(userId, role, projectId) {
-  if (role === 'Admin') return true;
-  
-  const assignment = await dbGet(
-    'SELECT 1 FROM project_assignments WHERE project_id = ? AND user_id = ?',
-    [projectId, userId]
-  );
-  return !!assignment;
+  return true;
 }
 
 // Helper: Check if user has permission to edit project (Write access)
 async function checkProjectEditAccess(userId, role, projectId) {
   if (role === 'Admin') return true;
-  
-  // Check page-level write permission
-  const user = await dbGet('SELECT allowed_views FROM users WHERE id = ?', [userId]);
-  if (!user) return false;
-  const allowed = (user.allowed_views || '').split(',').map(v => v.trim());
-  if (!allowed.includes('projects-list:write')) return false;
   
   // Project Submitter (Staff) and Executive can edit only if they have Write permission assigned
   const assignment = await dbGet(
@@ -604,23 +592,12 @@ app.get('/api/projects/stats', requireLogin, async (req, res) => {
       FROM projects p
       WHERE p.is_hidden = 0
     `;
-    let budgetParams = [];
-    let statusParams = [];
-    if (role !== 'Admin') {
-      budgetQuery += ` AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)`;
-      statusQuery = `
-        SELECT p.status, COUNT(*) as count 
-        FROM projects p
-        WHERE p.is_hidden = 0 AND p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
-      `;
-      budgetParams.push(userId);
-      statusParams.push(userId);
-    }
+    let queryParams = [];
 
     statusQuery += ` GROUP BY p.status`;
 
-    const budgetStats = await dbGet(budgetQuery, budgetParams);
-    const statusCounts = await dbAll(statusQuery, statusParams);
+    const budgetStats = await dbGet(budgetQuery, queryParams);
+    const statusCounts = await dbAll(statusQuery, queryParams);
 
     // Format status counts
     const statusCountsMap = { 'Not Started': 0, 'In Progress': 0, 'Delayed': 0, 'Completed': 0 };
@@ -696,25 +673,8 @@ app.get('/api/projects', requireLogin, async (req, res) => {
     `;
     let params = [reportMonthYear, role, userId];
 
-    if (role !== 'Admin') {
-      query += `
-        WHERE p.id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
-      `;
-      params.push(userId);
-    }
-
-    const user = await dbGet('SELECT allowed_views FROM users WHERE id = ?', [userId]);
-    const allowed = (user ? user.allowed_views : '').split(',').map(v => v.trim());
-    const hasWritePermission = role === 'Admin' || allowed.includes('projects-list:write');
-
     const projects = await dbAll(query, params);
-    const result = projects.map(p => {
-      if (!hasWritePermission) {
-        p.can_edit = 0;
-      }
-      return p;
-    });
-    res.json(result);
+    res.json(projects);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
