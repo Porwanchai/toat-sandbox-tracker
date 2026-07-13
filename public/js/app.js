@@ -40,7 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     notiToggle: document.getElementById('notification-toggle'),
     notiBadge: document.getElementById('noti-badge'),
+    notiBackdrop: document.getElementById('noti-backdrop'),
     notiDropdown: document.getElementById('noti-dropdown'),
+    notiCloseBtn: document.getElementById('noti-close-btn'),
     notiList: document.getElementById('noti-list'),
     clearNotiBtn: document.getElementById('clear-notifications'),
     
@@ -358,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Hide dropdowns when changing views
-    elements.notiDropdown.classList.add('hidden');
+    hideNotifications();
 
     // 4. Load view specific data
     switch (viewName) {
@@ -602,10 +604,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   // NOTIFICATIONS LISTENER
   // ----------------------------------------------------
+  function showNotifications() {
+    if (elements.notiDropdown) elements.notiDropdown.classList.remove('hidden');
+    if (elements.notiBackdrop) elements.notiBackdrop.classList.remove('hidden');
+  }
+
+  function hideNotifications() {
+    if (elements.notiDropdown) elements.notiDropdown.classList.add('hidden');
+    if (elements.notiBackdrop) elements.notiBackdrop.classList.add('hidden');
+  }
+
   elements.notiToggle.addEventListener('click', (e) => {
     e.preventDefault();
-    elements.notiDropdown.classList.toggle('hidden');
+    const isHidden = elements.notiDropdown.classList.contains('hidden');
+    if (isHidden) {
+      showNotifications();
+    } else {
+      hideNotifications();
+    }
   });
+
+  if (elements.notiCloseBtn) {
+    elements.notiCloseBtn.addEventListener('click', () => {
+      hideNotifications();
+    });
+  }
+
+  if (elements.notiBackdrop) {
+    elements.notiBackdrop.addEventListener('click', () => {
+      hideNotifications();
+    });
+  }
 
   async function loadNotifications() {
     try {
@@ -1907,7 +1936,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Close notifications dropdown when clicking outside
   document.addEventListener('click', (e) => {
     if (!elements.notiToggle.contains(e.target) && !elements.notiDropdown.contains(e.target)) {
-      elements.notiDropdown.classList.add('hidden');
+      hideNotifications();
     }
   });
 

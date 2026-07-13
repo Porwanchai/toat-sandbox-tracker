@@ -149,10 +149,15 @@
               <i class="fa-solid fa-bell"></i> แจ้งเตือน
               <span class="noti-count hidden" id="noti-badge">0</span>
             </a>
+            <!-- Backdrop for floating modal style notifications -->
+            <div class="noti-backdrop hidden" id="noti-backdrop"></div>
             <div class="noti-dropdown glassmorphism hidden" id="noti-dropdown">
               <div class="noti-header">
                 <h3>การแจ้งเตือน</h3>
-                <button class="btn btn-text btn-xs" id="clear-notifications">อ่านทั้งหมด</button>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <button class="btn btn-text btn-xs" id="clear-notifications" style="font-size:0.78rem;">อ่านทั้งหมด</button>
+                  <button type="button" id="noti-close-btn" aria-label="ปิด" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 0.25rem;">&times;</button>
+                </div>
               </div>
               <ul id="noti-list">
                 <li class="empty-noti">ไม่มีการแจ้งเตือนค้างอยู่</li>
