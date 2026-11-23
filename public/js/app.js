@@ -273,10 +273,53 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
   }
 
+  // Helper: Parse date and normalize Buddhist Era years (e.g. 2569, 2570) to Gregorian AD
+  function parseNormalizedDate(dateInput) {
+    if (!dateInput) return null;
+    if (dateInput instanceof Date) {
+      if (isNaN(dateInput.getTime())) return null;
+      let y = dateInput.getFullYear();
+      if (y >= 2400) {
+        while (y >= 2400) y -= 543;
+        const copy = new Date(dateInput.getTime());
+        copy.setFullYear(y);
+        return copy;
+      }
+      return dateInput;
+    }
+    const str = String(dateInput).trim();
+    const dateOnlyMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (dateOnlyMatch) {
+      let y = parseInt(dateOnlyMatch[1], 10);
+      const m = parseInt(dateOnlyMatch[2], 10) - 1;
+      const day = parseInt(dateOnlyMatch[3], 10);
+      while (y >= 2400) y -= 543;
+      return new Date(y, m, day);
+    }
+    const isoPrefixMatch = str.match(/^(\d{4})(-\d{1,2}-\d{1,2}.*)$/);
+    if (isoPrefixMatch) {
+      let y = parseInt(isoPrefixMatch[1], 10);
+      if (y >= 2400) {
+        while (y >= 2400) y -= 543;
+        const dFixed = new Date(`${y}${isoPrefixMatch[2]}`);
+        if (!isNaN(dFixed.getTime())) return dFixed;
+      }
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return null;
+    if (d.getFullYear() >= 2400) {
+      let y = d.getFullYear();
+      while (y >= 2400) y -= 543;
+      d.setFullYear(y);
+    }
+    return d;
+  }
+
   // Helper: Format Date
   function formatDate(dateStr) {
     if (!dateStr) return '-';
-    const d = new Date(dateStr);
+    const d = parseNormalizedDate(dateStr);
+    if (!d) return '-';
     return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
@@ -288,16 +331,33 @@ document.addEventListener('DOMContentLoaded', () => {
       'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
       'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
     ];
-    const monthName = monthsThai[parseInt(month) - 1];
-    const yearBE = parseInt(year) + 543;
+    const monthName = monthsThai[parseInt(month, 10) - 1];
+    let y = parseInt(year, 10);
+    while (y >= 2400) y -= 543;
+    const yearBE = y + 543;
     return `${monthName} ${yearBE}`;
+  }
+
+  // Helper: Format Thai Full Date Only (no time, ideal for plan start/end dates)
+  function formatThaiDateOnly(date) {
+    if (!date) return '-';
+    const d = parseNormalizedDate(date);
+    if (!d) return '-';
+    const monthsThai = [
+      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+    const day = d.getDate();
+    const monthName = monthsThai[d.getMonth()];
+    const yearBE = d.getFullYear() + 543;
+    return `${day} ${monthName} ${yearBE}`;
   }
 
   // Helper: Format Thai Full Date & Time
   function formatThaiDate(date) {
     if (!date) return '-';
-    const d = (date instanceof Date) ? date : new Date(date);
-    if (isNaN(d.getTime())) return '-';
+    const d = parseNormalizedDate(date);
+    if (!d) return '-';
     const monthsThai = [
       'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
       'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
@@ -1440,12 +1500,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let subTaskCount = 0;
         groupTasks.forEach(t => {
           if (t.start_date) {
-            const start = new Date(t.start_date);
-            if (!minStart || start < minStart) minStart = start;
+            const start = parseNormalizedDate(t.start_date);
+            if (start && (!minStart || start < minStart)) minStart = start;
           }
           if (t.end_date) {
-            const end = new Date(t.end_date);
-            if (!maxEnd || end > maxEnd) maxEnd = end;
+            const end = parseNormalizedDate(t.end_date);
+            if (end && (!maxEnd || end > maxEnd)) maxEnd = end;
           }
           if (t.sub_task && t.sub_task.trim() !== '') {
             totalProgress += t.progress_percent || 0;
@@ -1454,8 +1514,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const groupAvgProgress = subTaskCount > 0 ? Math.round(totalProgress / subTaskCount) : (groupTasks[0].progress_percent || 0);
-        const minStartDateStr = minStart ? formatThaiDate(minStart) : (groupTasks[0].start_date ? formatThaiDate(groupTasks[0].start_date) : '-');
-        const maxEndDateStr = maxEnd ? formatThaiDate(maxEnd) : (groupTasks[0].end_date ? formatThaiDate(groupTasks[0].end_date) : '-');
+        const minStartDateStr = minStart ? formatThaiDateOnly(minStart) : (groupTasks[0].start_date ? formatThaiDateOnly(groupTasks[0].start_date) : '-');
+        const maxEndDateStr = maxEnd ? formatThaiDateOnly(maxEnd) : (groupTasks[0].end_date ? formatThaiDateOnly(groupTasks[0].end_date) : '-');
 
         // Render main task group header
         taskRows += `
@@ -1475,8 +1535,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <tr>
                 <td style="padding:8px 10px; font-size:0.8rem; color:#64748b; width:22%; padding-left:18px; line-height:1.3;">↳ ${t.main_task}</td>
                 <td style="padding:8px 10px; font-size:0.8rem; color:#1e293b; font-weight:500;">${t.sub_task}</td>
-                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.start_date ? formatThaiDate(t.start_date) : '-'}</td>
-                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.end_date ? formatThaiDate(t.end_date) : '-'}</td>
+                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.start_date ? formatThaiDateOnly(t.start_date) : '-'}</td>
+                <td style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#334155;">${t.end_date ? formatThaiDateOnly(t.end_date) : '-'}</td>
                 <td style="padding:8px 10px;">${progressBar(t.progress_percent || 0)}</td>
                 <td style="padding:8px 10px; font-size:0.8rem; color:#334155;">${t.assignee_name || '-'}</td>
               </tr>
@@ -3473,8 +3533,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Compute task boundaries
     let dates = [];
     tasks.forEach(t => {
-      dates.push(new Date(t.start_date));
-      dates.push(new Date(t.end_date));
+      const s = parseNormalizedDate(t.start_date);
+      const e = parseNormalizedDate(t.end_date);
+      if (s) dates.push(s);
+      if (e) dates.push(e);
     });
 
     let minDate = new Date(Math.min(...dates));
@@ -3569,8 +3631,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('div');
         row.className = 'gantt-row';
 
-        const taskStart = new Date(t.start_date).getTime();
-        const taskEnd = new Date(t.end_date).getTime();
+        const parsedStart = parseNormalizedDate(t.start_date);
+        const parsedEnd = parseNormalizedDate(t.end_date);
+        const taskStart = parsedStart ? parsedStart.getTime() : minDate.getTime();
+        const taskEnd = parsedEnd ? parsedEnd.getTime() : taskStart;
 
         // Calculate Left Position and Width ratios
         let leftPercent = ((taskStart - minDate.getTime()) / totalMs) * 100;
